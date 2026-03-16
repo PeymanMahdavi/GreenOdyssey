@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your AI Road Trip | Green Odyssey</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/results.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Hide the default routing instructions box */
+        .leaflet-routing-container {
+            display: none !important;
+        }
+
+        /* Custom Popup styling */
+        .custom-popup .leaflet-popup-content-wrapper {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+        }
+
+        .custom-popup .leaflet-popup-tip {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-left: none;
+        }
+
+        .custom-popup .leaflet-popup-content {
+            margin: 0;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+
+<body class="results-bg">
+
+    <!-- NAVBAR -->
+    <nav class="navbar" style="position:relative;">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">
+                    <i data-lucide="leaf"></i>
+                </div>
+                Green Odyssey
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+            </ul>
+            <a href="planner.html" class="btn btn-secondary" style="border:none;">New Trip</a>
+        </div>
+    </nav>
+
+    <!-- TOP SUMMARY BANNER -->
+    <div class="results-banner">
+        <div class="container">
+            <div class="banner-content">
+                <div>
+                    <div class="banner-route" id="route-title">
+                        Loading... <i data-lucide="arrow-right"
+                            style="width:24px;height:24px;color:rgba(255,255,255,0.7);"></i> Loading...
+                    </div>
+                    <div style="font-size:1.125rem;opacity:0.9;" id="route-subtitle">Analyzing route...</div>
+                </div>
+
+                <div class="banner-stats">
+                    <div class="banner-stat">
+                        <span class="banner-stat-value"><i data-lucide="map"></i> <span id="distance-val">--
+                                km</span></span>
+                        <span class="banner-stat-label">Total Distance</span>
+                    </div>
+                    <div class="banner-stat">
+                        <span class="banner-stat-value"><i data-lucide="clock"></i> <span id="time-val">--</span></span>
+                        <span class="banner-stat-label">Driving Time</span>
+                    </div>
+                    <div class="banner-stat">
+                        <span class="banner-stat-value"><i data-lucide="zap"></i> <span id="stops-val">--</span></span>
+                        <span class="banner-stat-label">Charging</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div class="container">
+        <div class="dashboard-grid">
+
+            <!-- LEFT: TIMELINE -->
+            <aside>
+                <div class="timeline-card">
+                    <h2 class="timeline-title"><i data-lucide="list-ordered" style="color:var(--primary);"></i> Journey
+                        Timeline</h2>
+
+                    <div id="dynamic-timeline" class="timeline">
+                        <!-- Dynamic content will be injected here via JavaScript -->
+                    </div>
+                </div>
+            </aside>
+
+            <!-- RIGHT: MAP -->
+            <main>
+                <div class="results-map">
+                    <!-- Google Maps Container -->
+                    <div id="map" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;"></div>
+                    <div
+                        style="position:absolute;bottom:24px;right:24px;background:white;padding:12px;border-radius:var(--radius-md);box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:8px;font-size:0.85rem;">
+                        <div style="display:flex;align-items:center;gap:8px;"><span
+                                style="width:12px;height:12px;border-radius:50%;background:var(--primary);"></span>
+                            Charging</div>
+                        <div style="display:flex;align-items:center;gap:8px;"><span
+                                style="width:12px;height:12px;border-radius:50%;background:#f59e0b;"></span> Rest Stop
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;"><span
+                                style="width:12px;height:12px;border-radius:50%;background:#a855f7;"></span> Explore
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+        </div>
+
+        <!-- DETAIL CARDS -->
+        <h3 style="font-size:1.5rem;margin-bottom:24px;">Trip Details</h3>
+        <div class="detail-grid">
+
+            <!-- Charging Card -->
+            <div class="detail-card">
+                <div class="detail-header"><i data-lucide="zap"></i> Charging Plan</div>
+                <div class="detail-info">
+                    <div class="info-row">
+                        <span class="info-label">Total Charge Time</span>
+                        <span class="info-value" id="detail-charge-time">Calculating...</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Total Cost Est.</span>
+                        <span class="info-value" id="detail-cost">Calculating...</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Networks</span>
+                        <span class="info-value" id="detail-networks">Scanning route...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rest & Food Card -->
+            <div class="detail-card">
+                <div class="detail-header"><i data-lucide="coffee" style="color:#f59e0b;"></i> Rest Stops</div>
+                <div class="detail-info">
+                    <div class="info-row">
+                        <span class="info-label">Toilets Available</span>
+                        <span class="info-value">At all stops</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Food Options</span>
+                        <span class="info-value" id="detail-food">Café, Fast food</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Total Break Time</span>
+                        <span class="info-value" id="detail-break-time">Calculating...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Places to Explore -->
+            <div class="detail-card">
+                <div class="detail-header"><i data-lucide="camera" style="color:#a855f7;"></i> Places to Explore</div>
+                <div class="detail-info">
+                    <div class="info-row">
+                        <span class="info-label">Points of Interest</span>
+                        <span class="info-value" id="detail-poi">1</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Detour Time</span>
+                        <span class="info-value" id="detail-detour">+15 mins driving</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Location Highlight</span>
+                        <span class="info-value" id="detail-highlight">Loading...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trip Mood -->
+            <div class="detail-card">
+                <div class="detail-header"><i data-lucide="music" style="color:var(--teal);"></i> Trip Mood</div>
+                <div class="detail-info">
+                    <div class="info-row">
+                        <span class="info-label">Selected Vibe</span>
+                        <span class="info-value" id="detail-vibe">Relaxed</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Suggested Route</span>
+                        <span class="info-value" id="detail-route">Scenic Highway</span>
+                    </div>
+                    <div style="margin-top:12px;">
+                        <a href="#" class="btn btn-secondary" style="width:100%;font-size:0.9rem;padding:8px;"><i
+                                data-lucide="headphones"></i> Open Playlist</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EV Specs -->
+            <div class="detail-card">
+                <div class="detail-header"><i data-lucide="car-front" style="color:var(--text-main);"></i> Vehicle Specs
+                </div>
+                <div class="detail-info">
+                    <div class="info-row">
+                        <span class="info-label">Brand & Model</span>
+                        <span class="info-value" id="detail-car">Tesla Model 3</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Battery Capacity</span>
+                        <span class="info-value" id="detail-battery">57.5 kWh</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Est. Real Range</span>
+                        <span class="info-value" id="detail-range">380 km</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Charging Type</span>
+                        <span class="info-value" id="detail-plug">CCS2 / Supercharger</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <footer class="footer" style="background:white;border-top:1px solid var(--border);padding:40px 0;">
+        <div class="container text-center text-muted" style="font-size:0.9rem;">
+            &copy; 2026 Green Odyssey. Designed for a greener future.
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+
+        function initMap() {
+            var map = L.map('map', {
+                zoomControl: false
+            }).setView([51.15, 4.0], 5);
+
+            L.control.zoom({
+                position: 'bottomright'
+            }).addTo(map);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
+
+            // Load data from LocalStorage
+            let tripData = localStorage.getItem('green_odyssey_trip');
+            if (tripData) {
+                tripData = JSON.parse(tripData);
+            } else {
+                // Fallback demo data if user accessed results directly
+                tripData = {
+                    start: { name: "Amsterdam", lat: 52.3676, lon: 4.9041 },
+                    dest: { name: "Paris", lat: 48.8566, lon: 2.3522 },
+                    car: { brand: "Tesla", model: "Model 3" },
+                    preferences: { style: "balanced", mood: "relaxed" }
+                };
+            }
+
+            // Update Header texts
+            const routeTitleEl = document.getElementById('route-title');
+            if (routeTitleEl) {
+                routeTitleEl.innerHTML = `${tripData.start.name} <i data-lucide="arrow-right" style="width:24px;height:24px;color:rgba(255,255,255,0.7);margin:0 12px;transform:translateY(4px);"></i> ${tripData.dest.name}`;
+                lucide.createIcons();
+            }
+
+            const routeSubEl = document.getElementById('route-subtitle');
+            if (routeSubEl) {
+                const styleName = tripData.preferences.style.charAt(0).toUpperCase() + tripData.preferences.style.slice(1);
+                routeSubEl.innerHTML = `${styleName} Travel Style • ${tripData.car.brand.charAt(0).toUpperCase() + tripData.car.brand.slice(1)} ${tripData.car.model}`;
+            }
+
+            // --- Populate Detail Cards ---
+
+            // Mood & Vibe
+            const vibeMap = {
+                'relaxed': 'Chill & Relaxed',
+                'upbeat': 'Upbeat & Energetic',
+                'focus': 'Deep Focus',
+                'family': 'Family Friendly'
+            };
+            document.getElementById('detail-vibe').innerText = vibeMap[tripData.preferences.mood] || 'Relaxed';
+
+            // Travel Style
+            let suggestedRoute, poiCount, detourTime, highlight, foodOpts;
+            if (tripData.preferences.style === 'scenic') {
+                suggestedRoute = "Scenic Countryside & Coastal Roads";
+                poiCount = "3-5";
+                detourTime = "+45 mins driving";
+                foodOpts = "Local bistros, Farm cafés";
+                const scenicSpots = ["Historic Castles", "National Parks", "Coastal Views", "Local Vineyards", "Mountain Passes"];
+                highlight = scenicSpots[Math.floor(Math.random() * scenicSpots.length)];
+            } else if (tripData.preferences.style === 'fast') {
+                suggestedRoute = "Express Motorways & Toll Roads";
+                poiCount = "0";
+                detourTime = "None";
+                foodOpts = "Fast Food, Highway Service Stations";
+                highlight = "N/A (Direct Route)";
+            } else { // balanced
+                suggestedRoute = "Main Roads & Occasional Scenics";
+                poiCount = "1-2";
+                detourTime = "+15 mins driving";
+                foodOpts = "Service Areas, Local Diners";
+                highlight = "Town Squares & Centers";
+            }
+
+            document.getElementById('detail-route').innerText = suggestedRoute;
+            document.getElementById('detail-poi').innerText = poiCount;
+            document.getElementById('detail-detour').innerText = detourTime;
+            document.getElementById('detail-highlight').innerText = highlight;
+            document.getElementById('detail-food').innerText = foodOpts;
+
+            // Car Specs
+            const carBrand = tripData.car.brand.charAt(0).toUpperCase() + tripData.car.brand.slice(1);
+            document.getElementById('detail-car').innerText = `${carBrand} ${tripData.car.model}`;
+
+            const carSpecs = {
+                tesla: { battery: "57-82 kWh", range: "380-500 km", plug: "CCS2 / Supercharger" },
+                hyundai: { battery: "58-77.4 kWh", range: "350-480 km", plug: "CCS2 / 800V Architecture" },
+                volkswagen: { battery: "58-77 kWh", range: "330-450 km", plug: "CCS2" },
+                polestar: { battery: "69-82 kWh", range: "400-510 km", plug: "CCS2" }
+            };
+
+            const spec = carSpecs[tripData.car.brand.toLowerCase()] || { battery: "~60 kWh", range: "~400 km", plug: "CCS2" };
+            document.getElementById('detail-battery').innerText = spec.battery;
+            document.getElementById('detail-range').innerText = spec.range;
+            document.getElementById('detail-plug').innerText = spec.plug;
+
+            // Waypoints for Routing
+            const waypoints = [
+                L.latLng(tripData.start.lat, tripData.start.lon),
+                L.latLng(tripData.dest.lat, tripData.dest.lon)
+            ];
+
+            // Basic Start/End Markers
+            const startMarker = L.circleMarker(waypoints[0], { radius: 8, fillColor: 'var(--text-main)', color: '#fff', weight: 2, opacity: 1, fillOpacity: 1 }).addTo(map);
+            startMarker.bindPopup(`<div class="custom-popup"><h4 style="margin:0 0 4px;">${tripData.start.name}</h4><p style="margin:0;font-size:0.8rem;">Start • 100% Battery</p></div>`, { closeButton: false, offset: [0, -5] });
+
+            const destMarker = L.circleMarker(waypoints[1], { radius: 8, fillColor: '#ef4444', color: '#fff', weight: 2, opacity: 1, fillOpacity: 1 }).addTo(map);
+            destMarker.bindPopup(`<div class="custom-popup"><h4 style="margin:0 0 4px;">${tripData.dest.name}</h4><p style="margin:0;font-size:0.8rem;">Destination</p></div>`, { closeButton: false, offset: [0, -5] });
+
+            // Initialize Routing Machine
+            var routingControl = L.Routing.control({
+                waypoints: waypoints,
+                routeWhileDragging: false,
+                addWaypoints: false,
+                fitSelectedRoutes: true,
+                show: false,
+                lineOptions: {
+                    styles: [{ color: 'var(--primary)', opacity: 0.8, weight: 5 }]
+                },
+                createMarker: function () { return null; }
+            }).addTo(map);
+
+            routingControl.on('routesfound', function (e) {
+                var routes = e.routes;
+                var summary = routes[0].summary;
+
+                // Update UI Stats
+                document.getElementById('distance-val').innerText = Math.round(summary.totalDistance / 1000) + ' km';
+                const totalMins = Math.round(summary.totalTime / 60);
+                const hrs = Math.floor(totalMins / 60);
+                const mins = totalMins % 60;
+                document.getElementById('time-val').innerText = `${hrs}h ${mins}m`;
+
+                // Calculate dummy charging times based on distance (assuming ~1 charge per 300km)
+                const totalDistKm = summary.totalDistance / 1000;
+                const estimatedCharges = Math.max(0, Math.floor(totalDistKm / 300));
+                const estimatedChargeMins = estimatedCharges * 25; // ~25 mins per charge
+                const estimatedCost = (totalDistKm * 0.20 * 0.45).toFixed(2); // very rough dummy cost €0.45/kWh * 200wh/km
+
+                document.getElementById('detail-charge-time').innerText = estimatedChargeMins > 0 ? `${estimatedChargeMins} mins` : 'No charging needed';
+                document.getElementById('detail-cost').innerText = `~ €${estimatedCost}`;
+                document.getElementById('detail-break-time').innerText = `${estimatedChargeMins + (estimatedCharges * 15)} mins`;
+
+                // Fetch Real Charging Stations dynamically
+                fetchChargingStations(routes[0].coordinates, map, tripData);
+            });
+        }
+
+        function fetchChargingStations(coordinates, map, tripData) {
+            document.getElementById('stops-val').innerText = 'Scanning API...';
+
+            // Initial Timeline Render
+            renderTimeline(tripData, [], true);
+
+            // Pick 3 coordinates evenly spread out along the route to query for charging stations
+            const queryPoints = [];
+            for (let i = 1; i <= 3; i++) {
+                const idx = Math.floor((coordinates.length / 4) * i);
+                if (coordinates[idx]) queryPoints.push(coordinates[idx]);
+            }
+
+            if (queryPoints.length === 0) {
+                renderTimeline(tripData, [], false);
+                return;
+            }
+
+            // Prepare Overpass query for nodes tagged amenity=charging_station around our 3 points (5000m radius)
+            let overpassQuery = '[out:json][timeout:25];(';
+            queryPoints.forEach(pt => {
+                overpassQuery += `node["amenity"="charging_station"](around:5000,${pt.lat},${pt.lng});`;
+            });
+            overpassQuery += ');out body 3;'; // Limit to ~3 specific points total for speed
+
+            fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                body: overpassQuery
+            })
+                .then(res => res.json())
+                .then(data => {
+                    const chargers = data.elements || [];
+                    document.getElementById('stops-val').innerText = `${chargers.length} Stops`;
+
+                    const loadedStations = [];
+                    const networks = new Set();
+
+                    chargers.forEach((node, i) => {
+                        const latlng = L.latLng(node.lat, node.lon);
+                        const operator = node.tags.operator || 'Fast Charging Network';
+                        const capacity = node.tags.capacity || 'Multiple';
+
+                        if (operator !== 'Fast Charging Network') {
+                            networks.add(operator);
+                        }
+
+                        loadedStations.push({
+                            operator: operator,
+                            capacity: capacity
+                        });
+
+                        const chargingMarker = L.circleMarker(latlng, { radius: 8, fillColor: 'var(--primary)', color: '#fff', weight: 2, opacity: 1, fillOpacity: 1 }).addTo(map);
+
+                        const popupHTML = `<div class="custom-popup" style="font-family:'Outfit',sans-serif;text-align:center;">
+                                        <h4 style="margin:0 0 4px;color:var(--text-main);font-size:0.95rem;">${operator}</h4>
+                                        <p style="margin:0;color:var(--text-muted);font-size:0.8rem;">🔌 EV Charger • ${capacity} plugs</p>
+                                    </div>`;
+                        chargingMarker.bindPopup(popupHTML, { closeButton: false, offset: [0, -5] });
+                    });
+
+                    if (networks.size > 0) {
+                        const networkArr = Array.from(networks);
+                        let networkText = networkArr.slice(0, 2).join(', ');
+                        if (networkArr.length > 2) networkText += ', etc.';
+                        const netEl = document.getElementById('detail-networks');
+                        if (netEl) netEl.innerText = networkText;
+                    } else {
+                        const netEl = document.getElementById('detail-networks');
+                        if (netEl) netEl.innerText = 'Various Independent';
+                    }
+
+                    // Update Timeline with loaded stations
+                    renderTimeline(tripData, loadedStations, false);
+                })
+                .catch(err => {
+                    console.error('Overpass API error:', err);
+                    document.getElementById('stops-val').innerText = 'API Error';
+                    renderTimeline(tripData, [], false);
+                });
+        }
+
+        function renderTimeline(tripData, stations, isLoading) {
+            const container = document.getElementById('dynamic-timeline');
+            if (!container) return;
+
+            let html = `
+                <!-- Start -->
+                <div class="timeline-item" data-type="start">
+                    <div class="timeline-icon"><i data-lucide="map-pin"></i></div>
+                    <div class="timeline-content">
+                        <div class="timeline-header">
+                            <span class="timeline-stop-name">${tripData.start.name}</span>
+                            <span class="timeline-meta">100% Battery</span>
+                        </div>
+                        <div class="timeline-desc">Start of journey</div>
+                    </div>
+                </div>
+            `;
+
+            if (isLoading) {
+                html += `
+                    <div class="timeline-item" data-type="charge">
+                        <div class="timeline-icon" style="background:var(--border);"><i data-lucide="loader"></i></div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <span class="timeline-stop-name" style="color:var(--text-muted);">Finding optimal charging stops...</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                stations.forEach((station, index) => {
+                    let batteryArr = Math.max(10, 80 - ((index + 1) * 20)); // Dummy battery logic for UI
+                    html += `
+                        <!-- Charge point -->
+                        <div class="timeline-item" data-type="charge">
+                            <div class="timeline-icon"><i data-lucide="zap"></i></div>
+                            <div class="timeline-content">
+                                <div class="timeline-header">
+                                    <span class="timeline-stop-name">${station.operator}</span>
+                                    <span class="timeline-meta">Arrive at ~${batteryArr}%</span>
+                                </div>
+                                <div class="timeline-desc">Charge stop • ${station.capacity} Plugs</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            html += `
+                <!-- End -->
+                <div class="timeline-item" data-type="end">
+                    <div class="timeline-icon"><i data-lucide="flag"></i></div>
+                    <div class="timeline-content">
+                        <div class="timeline-header">
+                            <span class="timeline-stop-name">${tripData.dest.name}</span>
+                            <span class="timeline-meta">Destination REACHED</span>
+                        </div>
+                        <div class="timeline-desc">End of journey</div>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        document.addEventListener('DOMContentLoaded', initMap);
+    </script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+</body>
+
+</html>

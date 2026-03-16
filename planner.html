@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan Your Trip | Green Odyssey</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/planner.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .autocomplete-container {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            margin-top: 4px;
+        }
+
+        .autocomplete-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+            color: var(--text-main);
+            transition: background 0.2s;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item:hover {
+            background: var(--bg-main);
+            color: var(--primary);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar" style="position:relative;">
+        <div class="container nav-container" style="padding: 0 32px; max-width: 100%;">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">
+                    <i data-lucide="leaf"></i>
+                </div>
+                Green Odyssey
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+            </ul>
+            <a href="planner.html" class="btn btn-primary" style="opacity: 0.5; pointer-events: none;">Plan Your
+                Trip</a>
+        </div>
+    </nav>
+
+    <!-- PLANNER CONTAINER -->
+    <div class="planner-container">
+
+        <!-- LEFT PANEL: INPUT FORM -->
+        <aside class="planner-sidebar">
+            <div>
+                <h2>Design Your Journey</h2>
+                <p>Tell us where you're going and what you're driving.</p>
+            </div>
+
+            <form id="trip-planner-form">
+
+                <!-- Route -->
+                <div class="form-group">
+                    <label class="form-label">Start City</label>
+                    <div class="relative">
+                        <i data-lucide="map-pin" class="absolute"
+                            style="top:12px;left:12px;color:var(--text-muted);width:20px;"></i>
+                        <input type="text" id="start-city-input" class="form-control" placeholder="e.g. Amsterdam, NL"
+                            style="padding-left:40px;" autocomplete="off" required>
+                        <div id="start-city-autocomplete" class="autocomplete-container"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Destination City</label>
+                    <div class="relative">
+                        <i data-lucide="flag" class="absolute"
+                            style="top:12px;left:12px;color:var(--text-muted);width:20px;"></i>
+                        <input type="text" id="dest-city-input" class="form-control" placeholder="e.g. Paris, FR"
+                            style="padding-left:40px;" autocomplete="off" required>
+                        <div id="dest-city-autocomplete" class="autocomplete-container"></div>
+                    </div>
+                </div>
+
+                <!-- Vehicle -->
+                <hr style="border:none;border-top:1px solid var(--border);margin:32px 0;">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Car Brand</label>
+                        <select id="car-brand" class="form-control" required onchange="updateModels()">
+                            <option value="" disabled selected>Select brand...</option>
+                            <option value="tesla">Tesla</option>
+                            <option value="hyundai">Hyundai</option>
+                            <option value="volkswagen">Volkswagen</option>
+                            <option value="polestar">Polestar</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Car Model</label>
+                        <select id="car-model" class="form-control" required disabled>
+                            <option value="" disabled selected>Select model...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Preferences -->
+                <hr style="border:none;border-top:1px solid var(--border);margin:16px 0 32px;">
+
+                <div class="form-group">
+                    <label class="form-label">Travel Style (Optional)</label>
+                    <div class="radio-group">
+                        <label class="radio-card">
+                            <input type="radio" name="travel_style" value="fastest" checked>
+                            <div class="radio-card-content">
+                                <i data-lucide="zap"></i>
+                                <span class="radio-card-label">Fastest</span>
+                            </div>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="travel_style" value="balanced">
+                            <div class="radio-card-content">
+                                <i data-lucide="scale"></i>
+                                <span class="radio-card-label">Balanced</span>
+                            </div>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="travel_style" value="scenic">
+                            <div class="radio-card-content">
+                                <i data-lucide="camera"></i>
+                                <span class="radio-card-label">Scenic</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Trip Mood (Optional)</label>
+                    <div class="radio-group radio-group-4">
+                        <label class="radio-card">
+                            <input type="radio" name="trip_mood" value="relaxed" checked>
+                            <div class="radio-card-content">
+                                <i data-lucide="coffee"></i>
+                                <span class="radio-card-label">Relaxed</span>
+                            </div>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="trip_mood" value="adventure">
+                            <div class="radio-card-content">
+                                <i data-lucide="mountain"></i>
+                                <span class="radio-card-label">Adventure</span>
+                            </div>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="trip_mood" value="fun">
+                            <div class="radio-card-content">
+                                <i data-lucide="music"></i>
+                                <span class="radio-card-label">Fun</span>
+                            </div>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="trip_mood" value="family">
+                            <div class="radio-card-content">
+                                <i data-lucide="users"></i>
+                                <span class="radio-card-label">Family</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary"
+                    style="width:100%;font-size:1.125rem;padding:16px;margin-top:16px;">
+                    <i data-lucide="sparkles"></i> Generate AI Trip
+                </button>
+            </form>
+        </aside>
+
+        <!-- RIGHT PANEL: ROUTE PREVIEW -->
+        <main class="planner-map">
+
+            <!-- Placeholder Map overlay stats (shows empty state or general info) -->
+            <div class="map-overlay-top">
+                <div class="map-card" style="opacity: 0.9;">
+                    <div class="map-stat">
+                        <span class="map-stat-label">Estimated Distance</span>
+                        <span class="map-stat-value"><i data-lucide="map" style="color:var(--primary);width:20px;"></i>
+                            --- km</span>
+                    </div>
+                    <div style="width:1px;height:40px;background:var(--border);"></div>
+                    <div class="map-stat">
+                        <span class="map-stat-label">Charging Stops</span>
+                        <span class="map-stat-value"><i data-lucide="zap" style="color:var(--primary);width:20px;"></i>
+                            --</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Google Maps Container -->
+            <div id="map" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;"></div>
+
+        </main>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const carData = {
+            tesla: ['Model 3 (Standard Range)', 'Model 3 (Long Range)', 'Model Y (Long Range)', 'Model S'],
+            hyundai: ['Ioniq 5 (58 kWh)', 'Ioniq 5 (77.4 kWh)', 'Kona Electric'],
+            volkswagen: ['ID.3 (58 kWh)', 'ID.4 (77 kWh)', 'ID.Buzz'],
+            polestar: ['Polestar 2 (Standard Range)', 'Polestar 2 (Long Range)']
+        };
+
+        function updateModels() {
+            const brandSelect = document.getElementById('car-brand');
+            const modelSelect = document.getElementById('car-model');
+            const selectedBrand = brandSelect.value;
+
+            modelSelect.innerHTML = '<option value="" disabled selected>Select model...</option>';
+
+            if (selectedBrand && carData[selectedBrand]) {
+                carData[selectedBrand].forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model.toLowerCase().replace(/ /g, '-');
+                    option.textContent = model;
+                    modelSelect.appendChild(option);
+                });
+                modelSelect.disabled = false;
+            } else {
+                modelSelect.disabled = true;
+            }
+        }
+
+        function initMap() {
+            var map = L.map('map', {
+                zoomControl: false
+            }).setView([48.8566, 2.3522], 5);
+
+            L.control.zoom({
+                position: 'bottomright'
+            }).addTo(map);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
+        }
+
+        document.addEventListener('DOMContentLoaded', initMap);
+
+        // --- Autocomplete & Form Logic ---
+
+        let tripData = {
+            start: null, // { name: '', lat: 0, lon: 0 }
+            dest: null   // { name: '', lat: 0, lon: 0 }
+        };
+
+        function setupAutocomplete(inputId, containerId, type) {
+            const input = document.getElementById(inputId);
+            const container = document.getElementById(containerId);
+            let timeout = null;
+
+            input.addEventListener('input', function () {
+                clearTimeout(timeout);
+                const query = this.value;
+
+                if (query.length < 3) {
+                    container.style.display = 'none';
+                    return;
+                }
+
+                timeout = setTimeout(() => {
+                    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&featuretype=city`)
+                        .then(res => res.json())
+                        .then(data => {
+                            container.innerHTML = '';
+                            if (data.length > 0) {
+                                data.forEach(item => {
+                                    const div = document.createElement('div');
+                                    div.className = 'autocomplete-item';
+                                    div.textContent = item.display_name;
+                                    div.onclick = () => {
+                                        input.value = item.display_name;
+                                        container.style.display = 'none';
+                                        tripData[type] = {
+                                            name: item.display_name.split(',')[0],
+                                            full_name: item.display_name,
+                                            lat: parseFloat(item.lat),
+                                            lon: parseFloat(item.lon)
+                                        };
+                                    };
+                                    container.appendChild(div);
+                                });
+                                container.style.display = 'block';
+                            } else {
+                                container.style.display = 'none';
+                            }
+                        })
+                        .catch(err => console.error("Geocoding error:", err));
+                }, 400); // 400ms debounce
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function (e) {
+                if (e.target !== input && e.target !== container) {
+                    container.style.display = 'none';
+                }
+            });
+        }
+
+        setupAutocomplete('start-city-input', 'start-city-autocomplete', 'start');
+        setupAutocomplete('dest-city-input', 'dest-city-autocomplete', 'dest');
+
+        // Form Submission
+        document.getElementById('trip-planner-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            // Validation: Ensure cities were selected from dropdown
+            if (!tripData.start || !tripData.dest) {
+                alert("Please select valid cities from the autocomplete dropdown suggestions to ensure accurate routing.");
+                return;
+            }
+
+            // Gather remaining form data
+            const brand = document.getElementById('car-brand').value;
+            const modelEl = document.getElementById('car-model');
+            const model = modelEl.options[modelEl.selectedIndex].text;
+
+            const style = document.querySelector('input[name="travel_style"]:checked').value;
+            const mood = document.querySelector('input[name="trip_mood"]:checked').value;
+
+            // Save to LocalStorage
+            const completeTripData = {
+                start: tripData.start,
+                dest: tripData.dest,
+                car: { brand: brand, model: model },
+                preferences: { style: style, mood: mood }
+            };
+
+            localStorage.setItem('green_odyssey_trip', JSON.stringify(completeTripData));
+
+            // Redirect
+            window.location.href = 'results.html';
+        });
+
+    </script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</body>
+
+</html>
