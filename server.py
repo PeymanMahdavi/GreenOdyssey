@@ -26,7 +26,7 @@ def get_agent_engine():
     if agent_engine is None:
         if not AGENT_ENGINE_RESOURCE_NAME:
             raise RuntimeError("AGENT_ENGINE_RESOURCE_NAME env var is not set")
-        agent_engine = client.agent_engines.get(resource_name=AGENT_ENGINE_RESOURCE_NAME)
+        agent_engine = client.agent_engines.get(name=AGENT_ENGINE_RESOURCE_NAME)
     return agent_engine
 
 
