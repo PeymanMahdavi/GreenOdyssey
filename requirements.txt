@@ -1,6 +1,9 @@
-google-adk
-google-cloud-aiplatform[adk,agent_engines]
-mcp
-uvicorn
 fastapi
+uvicorn
 python-dotenv
+google-cloud-aiplatform
+google-adk
+google-cloud-modelarmor
+requests
+pydantic
+cloudpickle

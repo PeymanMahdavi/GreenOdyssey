@@ -3,24 +3,10 @@ import os
 from typing import Optional
 
 from google.adk.agents import Agent
-from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from google.adk.tools.google_search_tool import GoogleSearchTool
-from mcp import StdioServerParameters
 from pydantic import BaseModel, Field
 
-GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
-
-maps_tools = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="npx",
-            args=["-y", "@modelcontextprotocol/server-google-maps"],
-            env={"GOOGLE_MAPS_API_KEY": GOOGLE_MAPS_API_KEY},
-        ),
-        timeout=30,
-    ),
-)
+from .maps_tools import get_directions, search_places, geocode
 
 search_tool = GoogleSearchTool(bypass_multi_tools_limit=True)
 
@@ -135,7 +121,7 @@ def plan_all_stops(
     into a single "charge + rest" stop.
 
     The agent MUST then use the returned stop distances to find real EV charging
-    stations along the route using maps_search_places.
+    stations along the route using the search_places tool.
 
     Args:
         total_distance_km: Total route distance in kilometers.
@@ -269,7 +255,7 @@ If the user already provided these values, skip the search.
 
 ## Step 2: Get the Route
 
-Use `maps_directions` to get the route from start to end.
+Use the `get_directions` tool with origin and destination to get the driving route.
 Extract: total distance in km, duration, and the list of route steps with
 their distances and location descriptions.
 
@@ -289,7 +275,8 @@ Call `plan_all_stops` with ALL required parameters from previous steps.
 
 For EACH stop with type "charge" in the plan_all_stops result:
 1. Find the city/town closest to that stop's distance along the route.
-2. Call `maps_search_places` with query "EV charging station" near that city.
+2. Call `search_places` with query "EV charging station" and location set to
+   that city (e.g. query="EV charging station", location="Cologne, Germany").
 3. Pick the best result — prefer stations near the highway/motorway.
 4. Record the station name, full address, and city.
 
@@ -319,8 +306,10 @@ root_agent = Agent(
     description="Plans EV road trips with real charging stations, auto car spec lookup, and detailed itineraries.",
     instruction=AGENT_INSTRUCTION,
     tools=[
-        maps_tools,
         search_tool,
+        get_directions,
+        search_places,
+        geocode,
         calculate_battery_needs,
         plan_all_stops,
     ],
