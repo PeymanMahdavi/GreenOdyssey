@@ -1,11 +1,34 @@
 """Deploy the EV Trip Planner agent to Vertex AI Agent Engine."""
 
+from google.api_core import exceptions
 import vertexai
+from google.cloud import modelarmor_v1
 from vertexai import agent_engines
 
 PROJECT_ID = "qwiklabs-asl-02-c74cc833bee1"
 LOCATION = "us-central1"
 STAGING_BUCKET = f"gs://{PROJECT_ID}-staging"
+
+def create_armor_template():
+    client = modelarmor_v1.ModelArmorClient()
+
+    template = {
+        "name": "green-odyssey-safety",
+        "prompt_injection_filter": {"enabled": True},
+        "data_loss_prevention_filter": {"enabled": True},
+    }
+
+    parent = f"projects/{PROJECT_ID}/locations/{LOCATION}"
+
+    try:
+        response = client.create_template(
+            parent=parent,
+            template_id="green-odyssey-safety",
+            template=template,
+        )
+        print(response)
+    except exceptions.AlreadyExists:
+        print("Template already exists.")
 
 
 def deploy():
@@ -39,4 +62,5 @@ def deploy():
 
 
 if __name__ == "__main__":
+    create_armor_template()
     deploy()
