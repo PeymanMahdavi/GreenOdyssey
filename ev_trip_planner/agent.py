@@ -1,11 +1,13 @@
 import math
 import os
+from typing import Optional
 
 from google.adk.agents import Agent
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from google.adk.tools.google_search_tool import GoogleSearchTool
 from mcp import StdioServerParameters
+from pydantic import BaseModel, Field
 
 GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 
@@ -21,6 +23,48 @@ maps_tools = McpToolset(
 )
 
 search_tool = GoogleSearchTool(bypass_multi_tools_limit=True)
+
+
+# --- Output schema ---
+
+
+class CarSpecs(BaseModel):
+    model: str = Field(description="Full car model name, e.g. 'Tesla Model 3 Long Range'")
+    battery_capacity_kwh: float = Field(description="Usable battery capacity in kWh")
+    consumption_kwh_per_km: float = Field(description="Energy consumption in kWh per km")
+    usable_range_km: float = Field(description="Usable range in km (with 10% buffer)")
+
+
+class TripStop(BaseModel):
+    stop_number: int
+    city: str = Field(description="City name with country code, e.g. 'Dortmund, DE'")
+    type: str = Field(description="'start', 'charge', 'rest', or 'destination'")
+    station_name: Optional[str] = Field(default=None, description="EV charging station name if type is 'charge'")
+    station_address: Optional[str] = Field(default=None, description="Station address if type is 'charge'")
+    activity: str = Field(description="e.g. 'Start', 'Charge + Rest', 'Rest break', 'Arrive'")
+    duration_minutes: Optional[int] = Field(default=None, description="Stop duration in minutes")
+    battery_pct: float = Field(description="Battery % at this stop")
+    battery_after_pct: Optional[float] = Field(default=None, description="Battery % after charging (only for charge stops)")
+    distance_from_start_km: float = Field(description="Distance from start in km")
+
+
+class TripSummary(BaseModel):
+    total_distance_km: float
+    total_drive_time_hours: float
+    total_trip_time_hours: float = Field(description="Including all stops")
+    total_charging_time_minutes: int
+    total_rest_time_minutes: int
+    charging_stops: int
+    rest_stops: int
+    tips: list[str] = Field(description="1-3 useful tips for the driver")
+
+
+class TripPlan(BaseModel):
+    start_city: str
+    end_city: str
+    car: CarSpecs
+    stops: list[TripStop]
+    summary: TripSummary
 
 
 # --- Tool functions ---
@@ -112,7 +156,6 @@ def plan_all_stops(
 
     max_drive_km_before_break = speed_kmh * max_drive_hours_before_break
 
-    # --- Compute charging stop distances ---
     charge_distances = []
     if charges_needed > 0:
         segment_length = total_distance_km / (charges_needed + 1)
@@ -123,14 +166,12 @@ def plan_all_stops(
             if d < total_distance_km:
                 charge_distances.append(d)
 
-    # --- Compute rest stop distances (independent of charging) ---
     rest_distances = []
     d = max_drive_km_before_break
     while d < total_distance_km - 20:
         rest_distances.append(round(d, 1))
         d += max_drive_km_before_break
 
-    # --- Merge: remove rest stops within 50 km of a charging stop ---
     merge_radius_km = 50
     filtered_rest = []
     for rd in rest_distances:
@@ -138,15 +179,12 @@ def plan_all_stops(
         if not near_charge:
             filtered_rest.append(rd)
 
-    # --- Charging time estimate (correct math: kWh, not km) ---
-    # Charge from ~10% to ~80% = 70% of battery
     kwh_to_charge = battery_capacity_kwh * 0.7
     charger_power_kw = 50
     charge_time_min = max(15, math.ceil((kwh_to_charge / charger_power_kw) * 60))
 
     rest_duration_min = 15
 
-    # --- Build unified stop list sorted by distance ---
     all_stops = []
     for cd in charge_distances:
         energy_used = cd * consumption_kwh_per_km if cd == charge_distances[0] else (
@@ -213,110 +251,71 @@ You are an EV Trip Planner agent. You plan electric vehicle road trips with
 REAL, SPECIFIC stops — actual city names, actual charging station names, actual
 addresses. Never give generic or approximate stops.
 
-## Step 1: Collect Inputs
+You will receive a trip request with start city, destination city, car model,
+and driving preferences. Follow these steps IN ORDER. Do NOT skip any step.
+Do NOT produce your final response until ALL steps are complete.
 
-You need:
-- Start point and end point (city, address, or coordinates)
-- Car model (e.g. "Tesla Model 3 Long Range", "VW ID.4 Pro")
-- Average driving speed (km/h) — assume 100 km/h highway average if not given
-- Preferred max driving time before breaks (hours) — assume 2 hours if not given
+## Step 1: Look Up Car Battery Specs
 
-You do NOT need the user to provide battery capacity or consumption.
-If the user gives a car model, YOU look up the specs yourself (see Step 2).
-If the user only says a car brand without a specific model, ask which model/variant.
+Use the `google_search` tool to search for the car's specs.
+Search for: "<car model> usable battery capacity kWh energy consumption kWh per 100km WLTP"
 
-## Step 2: Look Up Car Battery Specs
-
-When the user provides a car model name, use the `google_search` tool to search
-for its specs. Search for: "<car model> usable battery capacity kWh energy consumption kWh per 100km WLTP"
-
-From the search results, extract:
-- **battery_capacity_kwh**: the usable battery capacity in kWh
-- **consumption_kwh_per_km**: energy consumption in kWh per km
+Extract:
+- battery_capacity_kwh: the usable battery capacity in kWh
+- consumption_kwh_per_km: energy consumption in kWh per km
   (if you find "X kWh/100km", divide by 100 to get kWh/km)
 
-Tell the user what specs you found before proceeding.
-If the user provides battery_capacity_kwh and consumption directly, skip the search.
+If the user already provided these values, skip the search.
 
-## Step 3: Get the Route
+## Step 2: Get the Route
 
 Use `maps_directions` to get the route from start to end.
-From the response, extract:
-- Total distance in km
-- Total estimated driving duration
-- **The list of route steps with their distances and location descriptions**
+Extract: total distance in km, duration, and the list of route steps with
+their distances and location descriptions.
 
-IMPORTANT: Read through ALL the route steps. Identify the major cities and towns
-the route passes through, and note approximately how far each is from the start.
-You will need this list in Step 5 to find charging stations.
+Read through ALL route steps. Identify major cities/towns and their approximate
+distance from start. You need this in Step 5.
 
-## Step 4: Calculate Battery Needs
+## Step 3: Calculate Battery Needs
 
 Call `calculate_battery_needs` with total_distance_km, consumption_kwh_per_km,
 and battery_capacity_kwh.
 
-## Step 5: Plan All Stops
+## Step 4: Plan All Stops
 
-Call `plan_all_stops` with ALL required parameters from steps 3-4:
-- total_distance_km, usable_range_km, charges_needed (from step 4)
-- battery_capacity_kwh, consumption_kwh_per_km (from step 2)
-- speed_kmh, max_drive_hours_before_break (from step 1)
+Call `plan_all_stops` with ALL required parameters from previous steps.
 
-This gives you a unified list of stops (charging and rest combined).
-Charging stops near rest stops are already merged — no duplicates.
+## Step 5: Find REAL Charging Stations
 
-## Step 6: Find REAL Charging Stations
-
-For EACH stop that has type "charge" in the plan_all_stops result:
-1. Look at the route steps from Step 3. Find the city or town closest to
-   that stop's distance_from_start_km.
-2. Call `maps_search_places` with query "EV charging station" and location
-   set to that city (e.g. "EV charging station near Kassel, Germany").
+For EACH stop with type "charge" in the plan_all_stops result:
+1. Find the city/town closest to that stop's distance along the route.
+2. Call `maps_search_places` with query "EV charging station" near that city.
 3. Pick the best result — prefer stations near the highway/motorway.
 4. Record the station name, full address, and city.
 
-NEVER skip this step. NEVER present "search for charging stations near this point".
-You MUST present real station names and addresses for every charging stop.
+NEVER skip this step. You MUST find real station names for every charging stop.
+For rest-only stops, just identify the nearest city from the route.
 
-For rest-only stops, just identify the nearest city from the route steps.
+## Step 6: Produce Final JSON Response
 
-## Step 7: Present the Final Itinerary
+After completing ALL steps above, produce your final response as valid JSON
+matching the output schema. Include:
+- start_city and end_city
+- car specs you found
+- ALL stops: start (type "start"), each charge/rest stop, and destination (type "destination")
+- summary with totals and 1-3 useful tips
 
-Present a DETAILED itinerary table. Example format:
-
-**Route: Amsterdam → Munich (828 km, ~8.3h driving)**
-**Car: Tesla Model 3 Long Range (75 kWh, 0.16 kWh/km, ~420 km range)**
-
-| # | City | Charging Station | Activity | Duration | Battery |
-|---|------|------------------|----------|----------|---------|
-| 1 | Dortmund, DE | Ionity Ladepark, Raststätte Lichtendorf | Charge + Rest | 45 min | 18% → 80% |
-| 2 | Würzburg, DE | - | Rest break | 15 min | 52% |
-| 3 | Nuremberg, DE | EnBW Schnellladepark, Ingolstädter Str. | Charge | 45 min | 15% → 80% |
-| 4 | Munich, DE | Destination | Arrive | - | 35% |
-
-Below the table include:
-- Total trip time (driving + all stops)
-- Total charging time vs rest time
-- Tips (e.g. "your car supports 150kW fast charging — actual charge time may be shorter")
-
-IMPORTANT: A typical trip of 800 km should have 3-5 total stops, NOT 15.
-Charging stops double as rest stops. Only add separate rest stops if the
-driving gap between two charging stops exceeds the driver's max drive time.
-
-## Important Rules
-
-- Always keep a 10% battery buffer — never arrive at a charger below 10%
-- Use metric units (km, kWh) throughout
-- Be precise: real station names, real cities, real addresses
-- If no EV charging station is found near a stop, search a wider area or the
-  next city along the route
-- Charging stops count as rest stops — do NOT add a separate rest stop next
-  to a charging stop
+CRITICAL RULES:
+- Every stop needs a real city name
+- Charging stops need real station_name and station_address from Step 5
+- Battery percentages should be realistic based on the calculations
+- distance_from_start_km = 0 for start, = total_distance for destination
+- A typical 800 km trip should have 3-5 stops, NOT 15
 """
 
 root_agent = Agent(
     name="ev_trip_planner",
-    model="gemini-2.5-flash-lite",
+    model="gemini-2.5-flash",
     description="Plans EV road trips with real charging stations, auto car spec lookup, and detailed itineraries.",
     instruction=AGENT_INSTRUCTION,
     tools=[
@@ -325,4 +324,5 @@ root_agent = Agent(
         calculate_battery_needs,
         plan_all_stops,
     ],
+    output_schema=TripPlan,
 )

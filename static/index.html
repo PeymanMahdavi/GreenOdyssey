@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Green Odyssey | AI-Powered EV Road Trip Planner</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">
+          <i data-lucide="leaf"></i>
+        </div>
+        Green Odyssey
+      </a>
+      <ul class="nav-links">
+        <li><a href="#" class="nav-link">Home</a></li>
+        <li><a href="#features" class="nav-link">Features</a></li>
+        <li><a href="#how-it-works" class="nav-link">How It Works</a></li>
+      </ul>
+      <a href="planner.html" class="btn btn-primary">Plan Your Trip</a>
+    </div>
+  </nav>
+
+  <!-- HERO SECTION -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-content">
+        <h1>Plan smarter EV <br><span class="text-gradient">road trips</span></h1>
+        <p>Green Odyssey uses AI to design EV journeys with optimized charging stops, comfortable breaks, and places worth discovering along the way.</p>
+        
+        <div class="hero-buttons">
+          <a href="planner.html" class="btn btn-primary">Plan Your Trip</a>
+          <a href="#example-trip" class="btn btn-secondary">See Example Trip</a>
+        </div>
+        
+        <div class="hero-value-points">
+          <div class="value-point">
+            <i data-lucide="check-circle-2"></i> EV-aware route planning
+          </div>
+          <div class="value-point">
+            <i data-lucide="check-circle-2"></i> Smart charging stops
+          </div>
+          <div class="value-point">
+            <i data-lucide="check-circle-2"></i> Discover places along the journey
+          </div>
+        </div>
+      </div>
+      
+      <div class="hero-mockup">
+        <div class="mockup-frame">
+          <div class="mockup-header">
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+            <span style="font-size:0.8rem;color:var(--text-muted);margin-left:8px;font-weight:500;">greenodyssey.ai/map</span>
+          </div>
+          <div class="mockup-body">
+            <div class="mockup-route">
+              <svg viewBox="0 0 400 300" preserveAspectRatio="none">
+                <path class="route-line" d="M50,250 C100,200 150,150 200,180 C280,220 320,100 350,50"></path>
+              </svg>
+            </div>
+            <div class="mockup-marker marker-start"><i data-lucide="map-pin" style="width:16px;height:16px;"></i></div>
+            <div class="mockup-marker marker-charge"><i data-lucide="zap" style="width:16px;height:16px;"></i></div>
+            <div class="mockup-marker marker-rest"><i data-lucide="coffee" style="width:16px;height:16px;"></i></div>
+            <div class="mockup-marker marker-end"><i data-lucide="flag" style="width:16px;height:16px;"></i></div>
+          </div>
+          <div class="mockup-card">
+            <div>
+              <div class="mockup-card-title">Amsterdam &rarr; Paris</div>
+              <div class="mockup-card-meta">Tesla Model 3 • 510 km</div>
+            </div>
+            <div class="mockup-card-stats">
+              <div class="stat-tag"><i data-lucide="zap" style="width:14px;height:14px;"></i> 2</div>
+              <div class="stat-tag"><i data-lucide="coffee" style="width:14px;height:14px;"></i> 1</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROBLEM SECTION -->
+  <section class="section" style="background:var(--surface);">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Why EV road trips are harder</h2>
+        <p>Planning an EV trip requires tracking too many variables. Existing navigation apps leave you stressed instead of excited.</p>
+      </div>
+      
+      <div class="problem-grid">
+        <div class="card problem-card">
+          <div class="card-icon" style="background:#fee2e2;color:#ef4444;"><i data-lucide="battery-warning"></i></div>
+          <h3>Battery Anxiety</h3>
+          <p style="margin-top:12px;font-size:1rem;">Drivers constantly worry about running out of battery before the next station.</p>
+        </div>
+        <div class="card problem-card">
+          <div class="card-icon" style="background:#fef3c7;color:#f59e0b;"><i data-lucide="help-circle"></i></div>
+          <h3>Charging Uncertainty</h3>
+          <p style="margin-top:12px;font-size:1rem;">Finding reliable, fast charging stations along your specific route is a puzzle.</p>
+        </div>
+        <div class="card problem-card">
+          <div class="card-icon" style="background:#e0e7ff;color:#6366f1;"><i data-lucide="clock"></i></div>
+          <h3>Poor Break Planning</h3>
+          <p style="margin-top:12px;font-size:1rem;">Drivers struggle to time rest stops perfectly with charging sessions.</p>
+        </div>
+        <div class="card problem-card">
+          <div class="card-icon" style="background:#f3e8ff;color:#a855f7;"><i data-lucide="map-pinned"></i></div>
+          <h3>Missed Experiences</h3>
+          <p style="margin-top:12px;font-size:1rem;">Navigation tools prioritize speed over discovering interesting places along the way.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SOLUTION SECTION -->
+  <section id="features" class="section">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Meet <span class="text-gradient">Green Odyssey</span></h2>
+        <p>Green Odyssey combines route planning, EV battery intelligence, charging infrastructure, and travel discovery into one AI-powered trip planner.</p>
+      </div>
+      
+      <div class="solution-grid">
+        <div class="card solution-card">
+          <div class="card-icon"><i data-lucide="route"></i></div>
+          <h3>EV-aware route planning</h3>
+          <p style="margin-top:12px;font-size:1rem;">State-of-the-art algorithms that understand your car’s range and driving physics.</p>
+        </div>
+        <div class="card solution-card">
+          <div class="card-icon"><i data-lucide="zap"></i></div>
+          <h3>Smart charging optimization</h3>
+          <p style="margin-top:12px;font-size:1rem;">We find the fastest, most reliable chargers exactly when your battery needs them.</p>
+        </div>
+        <div class="card solution-card">
+          <div class="card-icon"><i data-lucide="coffee"></i></div>
+          <h3>Comfort and rest stops</h3>
+          <p style="margin-top:12px;font-size:1rem;">Align your charging times with food, coffee, and restroom breaks effortlessly.</p>
+        </div>
+        <div class="card solution-card" style="grid-column: span 1.5;">
+          <div class="card-icon"><i data-lucide="camera"></i></div>
+          <h3>Places worth visiting</h3>
+          <p style="margin-top:12px;font-size:1rem;">Transform a boring A-to-B drive into a journey with scenic spots and landmarks.</p>
+        </div>
+        <div class="card solution-card" style="grid-column: span 1.5;">
+          <div class="card-icon"><i data-lucide="music"></i></div>
+          <h3>Optional trip mood</h3>
+          <p style="margin-top:12px;font-size:1rem;">Get matched with custom scenic routes and Spotify playlist suggestions for your vibe.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS SECTION -->
+  <section id="how-it-works" class="section" style="background:var(--surface);">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">How It Works</h2>
+        <p>Your perfect EV road trip constructed in three simple steps.</p>
+      </div>
+      
+      <div class="steps-container">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <h3 class="step-title">Enter your route</h3>
+          <p style="font-size:1rem;">Input your start city and destination. We calculate the geographic challenges.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <h3 class="step-title">Select your EV</h3>
+          <p style="font-size:1rem;">Choose your brand and model. Our AI knows your exact battery capacity and range.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <h3 class="step-title">Get your road trip</h3>
+          <p style="font-size:1rem;">Review a completely optimized itinerary of charging stops, rests, and scenic points.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXAMPLE TRIP SECTION -->
+  <section id="example-trip" class="section">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">A perfectly planned journey</h2>
+        <p>See what an AI-optimized trip looks like in action.</p>
+      </div>
+      
+      <div class="example-trip-container">
+        <div class="card example-trip-card">
+          <div class="example-header">
+            <div class="example-route">
+              Amsterdam <i data-lucide="arrow-right"></i> Paris
+            </div>
+            <div class="example-meta">
+              <span><i data-lucide="map" style="display:inline;width:14px;vertical-align:middle;margin-right:4px;"></i> 510 km</span>
+              <span><i data-lucide="clock" style="display:inline;width:14px;vertical-align:middle;margin-right:4px;"></i> 6h 20m</span>
+              <span><i data-lucide="car" style="display:inline;width:14px;vertical-align:middle;margin-right:4px;"></i> Balanced Drive</span>
+            </div>
+          </div>
+          <div class="example-body">
+            <div class="example-col">
+              <div class="example-list" style="margin-bottom:32px;">
+                <h4><i data-lucide="zap"></i> Charging Stops</h4>
+                <div class="example-items">
+                  <div class="example-item">
+                    <span class="example-item-title">Utrecht Fast Charger</span>
+                    <span class="example-item-desc">25 mins to 80%</span>
+                  </div>
+                  <div class="example-item">
+                    <span class="example-item-title">Antwerp Charging Hub</span>
+                    <span class="example-item-desc">30 mins to 85%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="example-list">
+                <h4><i data-lucide="coffee"></i> Rest Stops</h4>
+                <div class="example-items">
+                  <div class="example-item">
+                    <span class="example-item-title">Coffee break in Breda</span>
+                    <span class="example-item-desc">Café & Restrooms</span>
+                  </div>
+                  <div class="example-item">
+                    <span class="example-item-title">Rest stop near Antwerp</span>
+                    <span class="example-item-desc">Lunch area paired with charge</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="example-col">
+              <div class="example-list" style="margin-bottom:32px;">
+                <h4><i data-lucide="camera"></i> Places to Explore</h4>
+                <div class="example-items">
+                  <div class="example-item">
+                    <span class="example-item-title">Antwerp Old Town</span>
+                    <span class="example-item-desc">15 min detour for sightseeing</span>
+                  </div>
+                  <div class="example-item">
+                    <span class="example-item-title">Bruges Historic Center</span>
+                    <span class="example-item-desc">Scenic optional stop</span>
+                  </div>
+                </div>
+              </div>
+              <div class="example-list">
+                <h4><i data-lucide="music"></i> Trip Mood</h4>
+                <div class="example-items">
+                  <div class="example-item" style="background:linear-gradient(to right, var(--teal-light), transparent);border-color:var(--primary-light);">
+                    <span class="example-item-title" style="color:var(--teal);">Relaxed Scenic Drive</span>
+                    <span class="example-item-desc">Curated chill playlist suggested</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA SECTION -->
+  <section class="cta-section">
+    <div class="container cta-inner">
+      <h2 class="cta-title">Ready to plan your next EV adventure?</h2>
+      <a href="planner.html" class="btn btn-primary" style="font-size:1.125rem;padding:16px 32px;">Plan Your Trip</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-about">
+          <a href="index.html" class="logo">
+            <div class="logo-icon"><i data-lucide="leaf"></i></div>
+            Green Odyssey
+          </a>
+          <p style="font-size:1rem;margin-top:16px;max-width:300px;">AI-powered EV road trip planning for smarter, greener travel.</p>
+        </div>
+        <div>
+          <h4 class="footer-title">Product</h4>
+          <div class="footer-links">
+            <a href="index.html">Home</a>
+            <a href="#features">Features</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="planner.html">Plan a Trip</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <div>&copy; 2026 Green Odyssey. All rights reserved.</div>
+        <div class="social-links">
+          <a href="#" aria-label="Twitter"><i data-lucide="twitter"></i></a>
+          <a href="#" aria-label="GitHub"><i data-lucide="github"></i></a>
+          <a href="#" aria-label="Instagram"><i data-lucide="instagram"></i></a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+    
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href')).scrollIntoView({
+          behavior: 'smooth'
+        });
+      });
+    });
+  </script>
+</body>
+</html>
