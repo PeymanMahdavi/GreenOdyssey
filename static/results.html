@@ -252,7 +252,7 @@
         async function geocodeCity(cityName) {
             try {
                 const resp = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityName)}&limit=1`
+                    `/api/geocode?q=${encodeURIComponent(cityName)}&limit=1`
                 );
                 const data = await resp.json();
                 if (data.length > 0) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
@@ -284,7 +284,7 @@
 
             // --- Detail Cards ---
             document.getElementById('detail-charge-time').innerText = `${plan.summary.total_charging_time_minutes} mins`;
-            const estCost = (plan.summary.total_distance_km * plan.car.consumption_kwh_per_km * 0.45).toFixed(2);
+            const estCost = (plan.summary.total_distance_km * plan.car.consumption_kwh_per_km * 0.58).toFixed(2);
             document.getElementById('detail-cost').innerText = `~ €${estCost}`;
 
             const stationNames = plan.stops.filter(s => s.station_name).map(s => s.station_name);
@@ -317,47 +317,53 @@
                 subdomains: 'abcd', maxZoom: 20
             }).addTo(map);
 
-            // Geocode start/end for routing
-            let startCoord = coords ? coords.start : await geocodeCity(plan.start_city);
-            let destCoord = coords ? coords.dest : await geocodeCity(plan.end_city);
+            // Geocode all stops and create markers and waypoints
+            const stopCoords = await Promise.all(
+                plan.stops.map(stop => geocodeCity(stop.city))
+            );
 
-            if (!startCoord || !destCoord) return;
+            const waypoints = [];
+            stopCoords.forEach((loc, i) => {
+                if (!loc) return;
 
-            const startLL = L.latLng(startCoord.lat, startCoord.lon);
-            const destLL = L.latLng(destCoord.lat, destCoord.lon);
+                const stop = plan.stops[i];
+                const latLng = L.latLng(loc.lat, loc.lon);
+                waypoints.push(latLng);
 
-            L.circleMarker(startLL, { radius: 8, fillColor: '#1a1a2e', color: '#fff', weight: 2, fillOpacity: 1 })
-                .addTo(map)
-                .bindPopup(`<b>${plan.start_city}</b><br>Start • 100%`, { closeButton: false });
+                let markerOptions, popupContent;
 
-            L.circleMarker(destLL, { radius: 8, fillColor: '#ef4444', color: '#fff', weight: 2, fillOpacity: 1 })
-                .addTo(map)
-                .bindPopup(`<b>${plan.end_city}</b><br>Destination`, { closeButton: false });
+                if (stop.type === 'start') {
+                    markerOptions = { radius: 8, fillColor: '#1a1a2e', color: '#fff', weight: 2, fillOpacity: 1 };
+                    popupContent = `<b>${stop.city}</b><br>Start • 100%`;
+                } else if (stop.type === 'destination') {
+                    markerOptions = { radius: 8, fillColor: '#ef4444', color: '#fff', weight: 2, fillOpacity: 1 };
+                    popupContent = `<b>${stop.city}</b><br>Destination`;
+                } else {
+                    const color = stop.type === 'charge' ? 'var(--primary)' : '#f59e0b';
+                    markerOptions = { radius: 8, fillColor: color, color: '#fff', weight: 2, fillOpacity: 1 };
+                    popupContent = stop.station_name
+                        ? `<b>${stop.station_name}</b><br>${stop.station_address || stop.city}<br>Battery: ${stop.battery_pct}%`
+                        : `<b>${stop.city}</b><br>Rest break • ${stop.battery_pct}%`;
+                }
+
+                L.circleMarker(latLng, markerOptions)
+                    .addTo(map)
+                    .bindPopup(popupContent, { closeButton: false, className: 'custom-popup' });
+            });
 
             // Route line
-            L.Routing.control({
-                waypoints: [startLL, destLL],
-                routeWhileDragging: false, addWaypoints: false,
-                fitSelectedRoutes: true, show: false,
-                lineOptions: { styles: [{ color: '#0d9488', opacity: 0.7, weight: 5 }] },
-                createMarker: () => null
-            }).addTo(map);
-
-            // Geocode and place stop markers
-            for (const stop of plan.stops) {
-                if (stop.type === 'start' || stop.type === 'destination') continue;
-                const loc = await geocodeCity(stop.city);
-                if (!loc) continue;
-
-                const color = stop.type === 'charge' ? '#0d9488' : '#f59e0b';
-                const icon = stop.type === 'charge' ? 'zap' : 'coffee';
-                const label = stop.station_name
-                    ? `<b>${stop.station_name}</b><br>${stop.station_address || stop.city}<br>Battery: ${stop.battery_pct}%`
-                    : `<b>${stop.city}</b><br>Rest break • ${stop.battery_pct}%`;
-
-                L.circleMarker(L.latLng(loc.lat, loc.lon), {
-                    radius: 8, fillColor: color, color: '#fff', weight: 2, fillOpacity: 1
-                }).addTo(map).bindPopup(label, { closeButton: false });
+            if (waypoints.length > 1) {
+                L.Routing.control({
+                    waypoints: waypoints,
+                    routeWhileDragging: false,
+                    addWaypoints: false,
+                    fitSelectedRoutes: true,
+                    show: false,
+                    lineOptions: {
+                        styles: [{ color: 'var(--primary)', opacity: 0.8, weight: 6 }]
+                    },
+                    createMarker: () => null
+                }).addTo(map);
             }
         }
 

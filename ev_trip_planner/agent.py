@@ -275,9 +275,9 @@ Call `plan_all_stops` with ALL required parameters from previous steps.
 
 For EACH stop with type "charge" in the plan_all_stops result:
 1. Find the city/town closest to that stop's distance along the route.
-2. Call `search_places` with query "EV charging station" and location set to
+2. Call `search_places` with a specific query like "EV charging station" or "EV charger" and location set to
    that city (e.g. query="EV charging station", location="Cologne, Germany").
-3. Pick the best result — prefer stations near the highway/motorway.
+3. From the results, select the best option. The best option is a dedicated EV charging station. You MUST ignore any results that are primarily petrol/gas stations, even if they have an EV charger. Prefer well-known charging networks.
 4. Record the station name, full address, and city.
 
 NEVER skip this step. You MUST find real station names for every charging stop.

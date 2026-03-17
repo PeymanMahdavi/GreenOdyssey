@@ -279,6 +279,8 @@
             dest: null   // { name: '', lat: 0, lon: 0 }
         };
 
+        const autocompleteCache = {};
+
         function setupAutocomplete(inputId, containerId, type) {
             const input = document.getElementById(inputId);
             const container = document.getElementById(containerId);
@@ -286,42 +288,27 @@
 
             input.addEventListener('input', function () {
                 clearTimeout(timeout);
-                const query = this.value;
+                const query = this.value.trim().toLowerCase();
 
                 if (query.length < 3) {
                     container.style.display = 'none';
                     return;
                 }
 
+                if (autocompleteCache[query]) {
+                    renderAutocomplete(autocompleteCache[query], container, input, type);
+                    return;
+                }
+
                 timeout = setTimeout(() => {
-                    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&featuretype=city`)
+                    fetch(`/api/geocode?q=${encodeURIComponent(this.value)}&limit=5`)
                         .then(res => res.json())
                         .then(data => {
-                            container.innerHTML = '';
-                            if (data.length > 0) {
-                                data.forEach(item => {
-                                    const div = document.createElement('div');
-                                    div.className = 'autocomplete-item';
-                                    div.textContent = item.display_name;
-                                    div.onclick = () => {
-                                        input.value = item.display_name;
-                                        container.style.display = 'none';
-                                        tripData[type] = {
-                                            name: item.display_name.split(',')[0],
-                                            full_name: item.display_name,
-                                            lat: parseFloat(item.lat),
-                                            lon: parseFloat(item.lon)
-                                        };
-                                    };
-                                    container.appendChild(div);
-                                });
-                                container.style.display = 'block';
-                            } else {
-                                container.style.display = 'none';
-                            }
+                            autocompleteCache[query] = data; // Cache the result
+                            renderAutocomplete(data, container, input, type);
                         })
                         .catch(err => console.error("Geocoding error:", err));
-                }, 400); // 400ms debounce
+                }, 600); // Increased debounce delay to 600ms
             });
 
             // Close dropdown when clicking outside
@@ -330,6 +317,31 @@
                     container.style.display = 'none';
                 }
             });
+        }
+
+        function renderAutocomplete(data, container, input, type) {
+            container.innerHTML = '';
+            if (data.length > 0) {
+                data.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'autocomplete-item';
+                    div.textContent = item.display_name;
+                    div.onclick = () => {
+                        input.value = item.display_name;
+                        container.style.display = 'none';
+                        tripData[type] = {
+                            name: item.display_name.split(',')[0],
+                            full_name: item.display_name,
+                            lat: parseFloat(item.lat),
+                            lon: parseFloat(item.lon)
+                        };
+                    };
+                    container.appendChild(div);
+                });
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
         }
 
         setupAutocomplete('start-city-input', 'start-city-autocomplete', 'start');
