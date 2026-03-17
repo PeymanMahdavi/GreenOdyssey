@@ -59,13 +59,10 @@ def create_armor_template():
             malicious_uri_filter_settings=modelarmor_v1.MaliciousUriFilterSettings(
                 filter_enforcement=modelarmor_v1.MaliciousUriFilterSettings.MaliciousUriFilterEnforcement.ENABLED,
             ),
-            pii_filter_settings=modelarmor_v1.PiiFilterSettings(
-                pii_filters=[
-                    modelarmor_v1.PiiFilterSettings.PiiFilter(
-                        filter_type=modelarmor_v1.PiiFilterType.SSN,
-                        pii_enforcement=modelarmor_v1.PiiFilterSettings.PiiEnforcement.BLOCK,
-                    ),
-                ],
+            sdp_settings=modelarmor_v1.SdpFilterSettings(
+                basic_config=modelarmor_v1.SdpBasicConfig(
+                    filter_enforcement=modelarmor_v1.SdpBasicConfig.SdpBasicConfigEnforcement.ENABLED,
+                )
             ),
         ),
     )

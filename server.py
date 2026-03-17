@@ -5,9 +5,10 @@ import re
 
 import vertexai
 from google.cloud import modelarmor_v1
+from google.api_core import exceptions as google_exceptions
 from google.api_core.client_options import ClientOptions
-from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
 
@@ -34,6 +35,24 @@ ma_client = modelarmor_v1.ModelArmorClient(
 )
 
 
+def check_model_armor_template():
+    """Verify that the Model Armor template exists on startup."""
+    try:
+        logger.info(f"Checking for Model Armor template: {MODEL_ARMOR_TEMPLATE}")
+        ma_client.get_template(name=MODEL_ARMOR_TEMPLATE)
+        logger.info("Model Armor template found successfully.")
+    except google_exceptions.NotFound:
+        logger.critical(
+            f"Model Armor template '{MODEL_ARMOR_TEMPLATE}' not found. "
+            "The application will not be able to process requests safely. "
+            "Please run the deploy.py script to create the template."
+        )
+        raise RuntimeError(f"Model Armor template not found: {MODEL_ARMOR_TEMPLATE}")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred while checking for Model Armor template: {e}")
+        raise
+
+
 def get_agent_engine():
     global agent_engine
     if agent_engine is None:
@@ -44,6 +63,12 @@ def get_agent_engine():
 
 
 app = FastAPI()
+
+
+@app.on_event("startup")
+async def startup_event():
+    get_agent_engine()
+    check_model_armor_template()
 
 
 class PlanTripRequest(BaseModel):
