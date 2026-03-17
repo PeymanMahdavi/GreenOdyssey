@@ -36,15 +36,15 @@ Vertex AI Agent Engine
 
 ```
 ├── server.py                    FastAPI backend (calls Agent Engine remotely)
-├── deploy.py                    Deploy agent to Vertex AI Agent Engine + Model Armor
-├── Dockerfile                   Cloud Run container (Python 3.12, no Node.js)
+├── deploy.py                    Deploy agent to Vertex AI Agent Engine
+├── Dockerfile                   Cloud Run container (Python 3.12)
 ├── .dockerignore                Excludes agent code from Cloud Run image
 ├── requirements.txt             Python dependencies (dev + deploy)
 ├── README.md
 ├── ev_trip_planner/
 │   ├── __init__.py
 │   ├── agent.py                 ADK agent definition, tools, output schema (TripPlan)
-│   └── maps_tools.py            Google Maps REST API tools (get_directions, search_places, geocode)
+│   └── maps_tools.py            Google Maps REST API tools (condensed responses)
 └── static/
     ├── index.html               Landing page
     ├── planner.html             Trip planner form
@@ -57,32 +57,57 @@ Vertex AI Agent Engine
 
 ## Deployment
 
-### Agent Engine (Vertex AI)
+### 1. Deploy the Agent (Vertex AI Agent Engine)
 
-The ADK agent is deployed to Agent Engine as a managed service. It uses Python function tools for Google Maps (no MCP/Node.js — Agent Engine only supports Python).
+The ADK agent is deployed to Agent Engine as a managed service. It uses Python function tools for Google Maps (Agent Engine only supports Python).
 
 ```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 python deploy.py
-# Outputs: projects/.../reasoningEngines/XXXXXX
+# Outputs: projects/<PROJECT_NUMBER>/locations/us-central1/reasoningEngines/<ID>
 ```
 
-### Cloud Run (Web App)
+Copy the resource name and update the default in `server.py` (`AGENT_ENGINE_RESOURCE_NAME`).
 
-The FastAPI server + static UI is containerized and deployed to Cloud Run. It calls Agent Engine remotely via the Vertex AI SDK.
+### 2. Build and Push the Docker Image
 
 ```bash
-# Build and push
-docker build --platform linux/amd64 -t us-central1-docker.pkg.dev/<PROJECT>/ev-trip-planner/app:latest .
-docker push us-central1-docker.pkg.dev/<PROJECT>/ev-trip-planner/app:latest
+docker build --platform linux/amd64 \
+  -t us-central1-docker.pkg.dev/<PROJECT_ID>/ev-trip-planner/green-odyssey:latest .
+docker push us-central1-docker.pkg.dev/<PROJECT_ID>/ev-trip-planner/green-odyssey:latest
 ```
 
-Deploy via App Design Center or `gcloud run deploy` with these env vars:
+### 3. Deploy to Cloud Run
 
-| Variable | Value |
-|----------|-------|
-| `GOOGLE_CLOUD_PROJECT` | Your GCP project ID |
-| `GOOGLE_CLOUD_LOCATION` | `us-central1` |
-| `AGENT_ENGINE_RESOURCE_NAME` | Resource name from `deploy.py` output |
+```bash
+gcloud run deploy <SERVICE_NAME> \
+  --image us-central1-docker.pkg.dev/<PROJECT_ID>/ev-trip-planner/green-odyssey:latest \
+  --region us-central1
+```
+
+### Required IAM Roles for the Cloud Run Service Account
+
+The Cloud Run service account needs these roles (App Design Center does not grant them automatically):
+
+| Role | Purpose |
+|------|---------|
+| `roles/artifactregistry.reader` | Pull the container image from Artifact Registry |
+| `roles/aiplatform.user` | Call the Vertex AI Agent Engine |
+
+```bash
+SA="<SERVICE_ACCOUNT>@<PROJECT_ID>.iam.gserviceaccount.com"
+gcloud projects add-iam-policy-binding <PROJECT_ID> --member="serviceAccount:$SA" --role="roles/artifactregistry.reader"
+gcloud projects add-iam-policy-binding <PROJECT_ID> --member="serviceAccount:$SA" --role="roles/aiplatform.user"
+```
+
+### VPC Egress Configuration
+
+If deploying via App Design Center, the Cloud Run service may default to `vpc-access-egress: all-traffic`, which routes all outbound traffic through the VPC. If the VPC lacks a Cloud NAT gateway, the container cannot reach external APIs (Vertex AI, Google Maps). Fix by setting egress to `private-ranges-only`:
+
+```bash
+gcloud run services update <SERVICE_NAME> --region=us-central1 --vpc-egress=private-ranges-only
+```
 
 ### Local Development
 
@@ -93,7 +118,14 @@ python server.py
 # http://localhost:8000
 ```
 
-For local development, `server.py` calls Agent Engine remotely (same as production). Set the `AGENT_ENGINE_RESOURCE_NAME` env var or update the default in `server.py`.
+The local server calls Agent Engine remotely (same as production). Set `AGENT_ENGINE_RESOURCE_NAME` as an env var or update the default in `server.py`.
+
+To proxy a deployed Cloud Run service locally (with auth):
+
+```bash
+gcloud run services proxy <SERVICE_NAME> --region=us-central1 --port=8080
+# http://127.0.0.1:8080
+```
 
 ## Environment Variables
 
@@ -105,9 +137,16 @@ For local development, `server.py` calls Agent Engine remotely (same as producti
 | Cloud Run | `GOOGLE_CLOUD_LOCATION` | GCP region |
 | Cloud Run | `AGENT_ENGINE_RESOURCE_NAME` | Agent Engine resource path |
 
+## Key Implementation Notes
+
+- **Maps tool responses are condensed**: `get_directions`, `search_places`, and `geocode` strip polylines, HTML instructions, and bulk metadata from Google Maps API responses. The Vertex AI SDK has a size limit on function responses (~64KB), and raw Directions API responses for long routes can exceed 100KB.
+- **Stream events are dicts**: `agent_engine.stream_query()` returns events as Python dicts, not protobuf objects. Access fields with `event.get("content")` rather than `event.content`.
+- **Markdown fence stripping**: The agent may wrap its JSON output in `` ```json `` fences. The server strips these before parsing.
+- **Redeploying the agent**: After changing tools in `ev_trip_planner/`, you must run `python deploy.py` to create a new Agent Engine, then update `AGENT_ENGINE_RESOURCE_NAME` in `server.py` and redeploy the Cloud Run image.
+
 ## Tech Stack
 
 - **Agent**: Google ADK, Gemini 2.5 Flash, Pydantic output schema
 - **Backend**: FastAPI, Vertex AI SDK
 - **Frontend**: Vanilla HTML/CSS/JS, Leaflet maps, Lucide icons
-- **Infrastructure**: Vertex AI Agent Engine, Cloud Run, Artifact Registry, Model Armor
+- **Infrastructure**: Vertex AI Agent Engine, Cloud Run, Artifact Registry
