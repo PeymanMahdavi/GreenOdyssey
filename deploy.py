@@ -113,5 +113,8 @@ def deploy():
 
 
 if __name__ == "__main__":
-    create_armor_template()
+    try:
+        create_armor_template()
+    except Exception as e:
+        print(f"An error occurred: {e}")
     deploy()
