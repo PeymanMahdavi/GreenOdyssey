@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your AI Road Trip | Green Odyssey</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/results.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Hide the default routing instructions box */
+        .leaflet-routing-container {
+            display: none !important;
+        }
+
+        /* Custom Popup styling */
+        .custom-popup .leaflet-popup-content-wrapper {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+        }
+
+        .custom-popup .leaflet-popup-tip {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-left: none;
+        }
+
+        .custom-popup .leaflet-popup-content {
+            margin: 0;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+
+<body class="results-bg">
+
+    <!-- NAVBAR -->
+    <nav class="navbar" style="position:relative;">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">
+                    <i data-lucide="leaf"></i>
+                </div>
+                Green Odyssey
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+            </ul>
+            <a href="planner.html" class="btn btn-secondary" style="border:none;">New Trip</a>
+        </div>
+    </nav>
+
+    <!-- TOP SUMMARY BANNER -->
+    <div class="results-banner">
+        <div class="container">
+            <div class="banner-content">
+                <div>
+                    <div class="banner-route" id="route-title">
+                        Loading... <i data-lucide="arrow-right"
+                            style="width:24px;height:24px;color:rgba(255,255,255,0.7);"></i> Loading...
+                    </div>
+                    <div style="font-size:1.125rem;opacity:0.9;" id="route-subtitle">Analyzing route...</div>
+                </div>
+
+                <div class="banner-stats">
+                    <div class="banner-stat">
+                        <span class="banner-stat-value"><i data-lucide="map"></i> <span id="distance-val">--
+                                km</span></span>
+                        <span class="banner-stat-label">Total Distance</span>
+                    </div>
+                    <div class="banner-stat">
+                        <span class="banner-stat-value"><i data-lucide="clock"></i> <span id="time-val">--</span></span>
+                        <span class="banner-stat-label">Driving Time</span>
+                    </div>
+                    <div class="banner-stat">
+                        <span class="banner-stat-value"><i data-lucide="zap"></i> <span id="stops-val">--</span></span>
+                        <span class="banner-stat-label">Charging</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div class="container">
+        <div class="dashboard-grid">
+
+            <!-- LEFT: TIMELINE -->
+            <aside>
+                <div class="timeline-card">
+                    <h2 class="timeline-title"><i data-lucide="list-ordered" style="color:var(--primary);"></i> Journey
+                        Timeline</h2>
+
+                    <div id="dynamic-timeline" class="timeline">
+                        <!-- Dynamic content will be injected here via JavaScript -->
+                    </div>
+                </div>
+            </aside>
+
+            <!-- RIGHT: MAP -->
+            <main>
+                <div class="results-map">
+                    <!-- Google Maps Container -->
+                    <div id="map" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;"></div>
+                    <div
+                        style="position:absolute;bottom:24px;right:24px;background:white;padding:12px;border-radius:var(--radius-md);box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:8px;font-size:0.85rem;">
+                        <div style="display:flex;align-items:center;gap:8px;"><span
+                                style="width:12px;height:12px;border-radius:50%;background:var(--primary);"></span>
+                            Charging</div>
+                        <div style="display:flex;align-items:center;gap:8px;"><span
+                                style="width:12px;height:12px;border-radius:50%;background:#f59e0b;"></span> Rest Stop
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;"><span
+                                style="width:12px;height:12px;border-radius:50%;background:#a855f7;"></span> Explore
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+        </div>
+
+        <!-- DETAIL CARDS -->
+        <h3 style="font-size:1.5rem;margin-bottom:24px;">Trip Details</h3>
+        <div class="detail-grid">
+
+            <!-- Charging Card -->
+            <div class="detail-card">
+                <div class="detail-header"><i data-lucide="zap"></i> Charging Plan</div>
+                <div class="detail-info">
+                    <div class="info-row">
+                        <span class="info-label">Total Charge Time</span>
+                        <span class="info-value" id="detail-charge-time">Calculating...</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Total Cost Est.</span>
+                        <span class="info-value" id="detail-cost">Calculating...</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Networks</span>
+                        <span class="info-value" id="detail-networks">Scanning route...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rest & Food Card -->
+            <div class="detail-card">
+                <div class="detail-header"><i data-lucide="coffee" style="color:#f59e0b;"></i> Rest Stops</div>
+                <div class="detail-info">
+                    <div class="info-row">
+                        <span class="info-label">Toilets Available</span>
+                        <span class="info-value">At all stops</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Food Options</span>
+                        <span class="info-value" id="detail-food">Café, Fast food</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Total Break Time</span>
+                        <span class="info-value" id="detail-break-time">Calculating...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Places to Explore -->
+            <div class="detail-card">
+                <div class="detail-header"><i data-lucide="camera" style="color:#a855f7;"></i> Places to Explore</div>
+                <div class="detail-info">
+                    <div class="info-row">
+                        <span class="info-label">Points of Interest</span>
+                        <span class="info-value" id="detail-poi">1</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Detour Time</span>
+                        <span class="info-value" id="detail-detour">+15 mins driving</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Location Highlight</span>
+                        <span class="info-value" id="detail-highlight">Loading...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trip Mood -->
+            <div class="detail-card">
+                <div class="detail-header"><i data-lucide="music" style="color:var(--teal);"></i> Trip Mood</div>
+                <div class="detail-info">
+                    <div class="info-row">
+                        <span class="info-label">Selected Vibe</span>
+                        <span class="info-value" id="detail-vibe">Relaxed</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Suggested Route</span>
+                        <span class="info-value" id="detail-route">Scenic Highway</span>
+                    </div>
+                    <div style="margin-top:12px;">
+                        <a href="#" class="btn btn-secondary" style="width:100%;font-size:0.9rem;padding:8px;"><i
+                                data-lucide="headphones"></i> Open Playlist</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EV Specs -->
+            <div class="detail-card">
+                <div class="detail-header"><i data-lucide="car-front" style="color:var(--text-main);"></i> Vehicle Specs
+                </div>
+                <div class="detail-info">
+                    <div class="info-row">
+                        <span class="info-label">Brand & Model</span>
+                        <span class="info-value" id="detail-car">Tesla Model 3</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Battery Capacity</span>
+                        <span class="info-value" id="detail-battery">57.5 kWh</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Est. Real Range</span>
+                        <span class="info-value" id="detail-range">380 km</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Charging Type</span>
+                        <span class="info-value" id="detail-plug">CCS2 / Supercharger</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <footer class="footer" style="background:white;border-top:1px solid var(--border);padding:40px 0;">
+        <div class="container text-center text-muted" style="font-size:0.9rem;">
+            &copy; 2026 Green Odyssey. Designed for a greener future.
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+
+        function formatHours(h) {
+            const hrs = Math.floor(h);
+            const mins = Math.round((h - hrs) * 60);
+            return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+        }
+
+        async function geocodeCity(cityName) {
+            try {
+                const resp = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityName)}&limit=1`
+                );
+                const data = await resp.json();
+                if (data.length > 0) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+            } catch (e) { console.warn('Geocode failed for', cityName, e); }
+            return null;
+        }
+
+        async function initResults() {
+            const planRaw = localStorage.getItem('green_odyssey_plan');
+            const coordsRaw = localStorage.getItem('green_odyssey_coords');
+
+            if (!planRaw) {
+                document.getElementById('route-title').innerText = 'No trip data found';
+                document.getElementById('route-subtitle').innerText = 'Go to the planner to create a trip.';
+                return;
+            }
+
+            const plan = JSON.parse(planRaw);
+            const coords = coordsRaw ? JSON.parse(coordsRaw) : null;
+
+            // --- Banner ---
+            document.getElementById('route-title').innerHTML =
+                `${plan.start_city} <i data-lucide="arrow-right" style="width:24px;height:24px;color:rgba(255,255,255,0.7);margin:0 12px;transform:translateY(4px);"></i> ${plan.end_city}`;
+            document.getElementById('route-subtitle').innerText = `${plan.car.model} • ${plan.car.usable_range_km} km range`;
+            document.getElementById('distance-val').innerText = `${Math.round(plan.summary.total_distance_km)} km`;
+            document.getElementById('time-val').innerText = formatHours(plan.summary.total_drive_time_hours);
+            document.getElementById('stops-val').innerText = `${plan.summary.charging_stops} Stops`;
+            lucide.createIcons();
+
+            // --- Detail Cards ---
+            document.getElementById('detail-charge-time').innerText = `${plan.summary.total_charging_time_minutes} mins`;
+            const estCost = (plan.summary.total_distance_km * plan.car.consumption_kwh_per_km * 0.45).toFixed(2);
+            document.getElementById('detail-cost').innerText = `~ €${estCost}`;
+
+            const stationNames = plan.stops.filter(s => s.station_name).map(s => s.station_name);
+            const networks = [...new Set(stationNames.map(n => n.split(' ')[0]))];
+            document.getElementById('detail-networks').innerText = networks.length > 0 ? networks.slice(0, 3).join(', ') : 'Various';
+
+            document.getElementById('detail-break-time').innerText = `${plan.summary.total_rest_time_minutes + plan.summary.total_charging_time_minutes} mins`;
+
+            const chargeCities = plan.stops.filter(s => s.type === 'charge').map(s => s.city);
+            document.getElementById('detail-poi').innerText = chargeCities.length > 0 ? chargeCities.length : '0';
+            document.getElementById('detail-highlight').innerText = chargeCities.length > 0 ? chargeCities[0] : 'N/A';
+
+            document.getElementById('detail-car').innerText = plan.car.model;
+            document.getElementById('detail-battery').innerText = `${plan.car.battery_capacity_kwh} kWh`;
+            document.getElementById('detail-range').innerText = `${Math.round(plan.car.usable_range_km)} km`;
+
+            // --- Tips ---
+            if (plan.summary.tips && plan.summary.tips.length > 0) {
+                document.getElementById('detail-route').innerText = plan.summary.tips[0];
+            }
+
+            // --- Timeline ---
+            renderTimeline(plan);
+
+            // --- Map ---
+            const map = L.map('map', { zoomControl: false }).setView([50, 8], 5);
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap &copy; CARTO',
+                subdomains: 'abcd', maxZoom: 20
+            }).addTo(map);
+
+            // Geocode start/end for routing
+            let startCoord = coords ? coords.start : await geocodeCity(plan.start_city);
+            let destCoord = coords ? coords.dest : await geocodeCity(plan.end_city);
+
+            if (!startCoord || !destCoord) return;
+
+            const startLL = L.latLng(startCoord.lat, startCoord.lon);
+            const destLL = L.latLng(destCoord.lat, destCoord.lon);
+
+            L.circleMarker(startLL, { radius: 8, fillColor: '#1a1a2e', color: '#fff', weight: 2, fillOpacity: 1 })
+                .addTo(map)
+                .bindPopup(`<b>${plan.start_city}</b><br>Start • 100%`, { closeButton: false });
+
+            L.circleMarker(destLL, { radius: 8, fillColor: '#ef4444', color: '#fff', weight: 2, fillOpacity: 1 })
+                .addTo(map)
+                .bindPopup(`<b>${plan.end_city}</b><br>Destination`, { closeButton: false });
+
+            // Route line
+            L.Routing.control({
+                waypoints: [startLL, destLL],
+                routeWhileDragging: false, addWaypoints: false,
+                fitSelectedRoutes: true, show: false,
+                lineOptions: { styles: [{ color: '#0d9488', opacity: 0.7, weight: 5 }] },
+                createMarker: () => null
+            }).addTo(map);
+
+            // Geocode and place stop markers
+            for (const stop of plan.stops) {
+                if (stop.type === 'start' || stop.type === 'destination') continue;
+                const loc = await geocodeCity(stop.city);
+                if (!loc) continue;
+
+                const color = stop.type === 'charge' ? '#0d9488' : '#f59e0b';
+                const icon = stop.type === 'charge' ? 'zap' : 'coffee';
+                const label = stop.station_name
+                    ? `<b>${stop.station_name}</b><br>${stop.station_address || stop.city}<br>Battery: ${stop.battery_pct}%`
+                    : `<b>${stop.city}</b><br>Rest break • ${stop.battery_pct}%`;
+
+                L.circleMarker(L.latLng(loc.lat, loc.lon), {
+                    radius: 8, fillColor: color, color: '#fff', weight: 2, fillOpacity: 1
+                }).addTo(map).bindPopup(label, { closeButton: false });
+            }
+        }
+
+        function renderTimeline(plan) {
+            const container = document.getElementById('dynamic-timeline');
+            if (!container) return;
+
+            let html = '';
+            for (const stop of plan.stops) {
+                let iconName, dataType, desc, meta;
+
+                if (stop.type === 'start') {
+                    iconName = 'map-pin'; dataType = 'start';
+                    desc = 'Start of journey';
+                    meta = `${stop.battery_pct}% Battery`;
+                } else if (stop.type === 'destination') {
+                    iconName = 'flag'; dataType = 'end';
+                    desc = 'End of journey';
+                    meta = `${stop.battery_pct}% Battery remaining`;
+                } else if (stop.type === 'charge') {
+                    iconName = 'zap'; dataType = 'charge';
+                    const stationInfo = stop.station_name ? stop.station_name : 'EV Charging';
+                    desc = `${stationInfo} • ${stop.duration_minutes} min`;
+                    meta = `${stop.battery_pct}% → ${stop.battery_after_pct || 80}%`;
+                } else {
+                    iconName = 'coffee'; dataType = 'rest';
+                    desc = `Rest break • ${stop.duration_minutes} min`;
+                    meta = `${stop.battery_pct}% Battery`;
+                }
+
+                html += `
+                    <div class="timeline-item" data-type="${dataType}">
+                        <div class="timeline-icon"><i data-lucide="${iconName}"></i></div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <span class="timeline-stop-name">${stop.city}</span>
+                                <span class="timeline-meta">${meta}</span>
+                            </div>
+                            <div class="timeline-desc">${desc}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        document.addEventListener('DOMContentLoaded', initResults);
+    </script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+</body>
+
+</html>

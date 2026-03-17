@@ -1,0 +1,10 @@
+.venv/
+.git/
+__pycache__/
+*.pyc
+.env
+**/.adk/
+.DS_Store
+ev_trip_planner/
+deploy.py
+README.md
