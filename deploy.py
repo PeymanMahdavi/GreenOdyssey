@@ -1,5 +1,7 @@
 """Deploy the EV Trip Planner agent to Vertex AI Agent Engine."""
 
+import os
+from dotenv import load_dotenv
 from google.api_core import exceptions
 from google.api_core.client_options import ClientOptions
 import vertexai
@@ -10,7 +12,10 @@ PROJECT_ID = "qwiklabs-asl-02-c74cc833bee1"
 LOCATION = "us-central1"
 STAGING_BUCKET = f"gs://{PROJECT_ID}-staging"
 
-GOOGLE_MAPS_API_KEY = "AIzaSyCusFvFHfognHFDGDQueMDye04d1kQk4BA"
+
+load_dotenv()
+
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
 
 TEMPLATE_ID = "green-odyssey-safety"
 
@@ -53,6 +58,11 @@ def create_armor_template():
             ),
             malicious_uri_filter_settings=modelarmor_v1.MaliciousUriFilterSettings(
                 filter_enforcement=modelarmor_v1.MaliciousUriFilterSettings.MaliciousUriFilterEnforcement.ENABLED,
+            ),
+            sdp_settings=modelarmor_v1.SdpFilterSettings(
+                basic_config=modelarmor_v1.SdpBasicConfig(
+                    filter_enforcement=modelarmor_v1.SdpBasicConfig.SdpBasicConfigEnforcement.ENABLED,
+                )
             ),
         ),
     )
@@ -103,4 +113,5 @@ def deploy():
 
 
 if __name__ == "__main__":
+    create_armor_template()
     deploy()

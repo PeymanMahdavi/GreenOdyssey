@@ -5,8 +5,12 @@ import re
 import requests
 
 import vertexai
+from google.cloud import modelarmor_v1
+from google.api_core import exceptions as google_exceptions
+from google.api_core.client_options import ClientOptions
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
 
@@ -20,8 +24,35 @@ AGENT_ENGINE_RESOURCE_NAME = os.environ.get(
     "projects/1050509607684/locations/us-central1/reasoningEngines/1769878369672888320",
 )
 
+MODEL_ARMOR_TEMPLATE = f"projects/{PROJECT_ID}/locations/{LOCATION}/templates/green-odyssey-safety"
+
 client = vertexai.Client(project=PROJECT_ID, location=LOCATION)
 agent_engine = None
+
+ma_client = modelarmor_v1.ModelArmorClient(
+    transport="rest",
+    client_options=ClientOptions(
+        api_endpoint=f"modelarmor.{LOCATION}.rep.googleapis.com"
+    ),
+)
+
+
+def check_model_armor_template():
+    """Verify that the Model Armor template exists on startup."""
+    try:
+        logger.info(f"Checking for Model Armor template: {MODEL_ARMOR_TEMPLATE}")
+        ma_client.get_template(name=MODEL_ARMOR_TEMPLATE)
+        logger.info("Model Armor template found successfully.")
+    except google_exceptions.NotFound:
+        logger.critical(
+            f"Model Armor template '{MODEL_ARMOR_TEMPLATE}' not found. "
+            "The application will not be able to process requests safely. "
+            "Please run the deploy.py script to create the template."
+        )
+        raise RuntimeError(f"Model Armor template not found: {MODEL_ARMOR_TEMPLATE}")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred while checking for Model Armor template: {e}")
+        raise
 
 
 def get_agent_engine():
@@ -34,6 +65,12 @@ def get_agent_engine():
 
 
 app = FastAPI()
+
+
+@app.on_event("startup")
+async def startup_event():
+    get_agent_engine()
+    check_model_armor_template()
 
 
 class PlanTripRequest(BaseModel):
@@ -57,7 +94,25 @@ async def plan_trip(request: PlanTripRequest):
         f"Average speed: {request.speed_kmh} km/h. "
         f"Max driving before a break: {request.max_drive_hours} hours. "
         f"Travel style: {request.travel_style}. "
+        f"Trip mood: {request.trip_mood}. "
     )
+
+    # --- Model Armor Safety Check ---
+    try:
+        ma_request = modelarmor_v1.SanitizeUserPromptRequest(
+            name=MODEL_ARMOR_TEMPLATE,
+            user_prompt_data={"text": prompt}
+        )
+        ma_response = ma_client.sanitize_user_prompt(request=ma_request)
+        
+        if ma_response.sanitization_result.filter_match_state == modelarmor_v1.FilterMatchState.MATCH_FOUND:
+            logger.warning(f"Model Armor blocked request. Result: {ma_response.sanitization_result}")
+            raise HTTPException(status_code=400, detail="Safety violation detected in your request.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Model Armor validation failed: {e}")
+        raise HTTPException(status_code=500, detail="Security validation error")
 
     try:
         engine = get_agent_engine()
