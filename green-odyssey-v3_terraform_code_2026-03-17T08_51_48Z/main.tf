@@ -7,7 +7,7 @@ module "cloud-run-1" {
   project_id                    = "qwiklabs-asl-02-c74cc833bee1"
   location                      = "us-central1"
   service_name                  = "green-odyssey-v3-5e33"
-  containers                    = [{"container_image" = "us-central1-docker.pkg.dev/qwiklabs-asl-02-c74cc833bee1/ev-trip-planner/app:latest", "container_name" = "green-odyssey-v3-container", "ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}}]
+  containers                    = [{"container_image" = "us-central1-docker.pkg.dev/qwiklabs-asl-02-c74cc833bee1/ev-trip-planner/green-odyssey:latest", "container_name" = "green-odyssey-v3-container", "ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}}]
   gpu_zonal_redundancy_disabled = false
   vpc_access = {
     egress = "ALL_TRAFFIC"

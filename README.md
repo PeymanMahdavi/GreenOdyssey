@@ -12,8 +12,9 @@ Browser (Green Odyssey UI)
          │
          ▼  POST /api/plan-trip
 FastAPI Server (server.py on Cloud Run)
-         │
-         ▼  agent_engine.stream_query()
+  ├── Model Armor sanitize_user_prompt()
+  │
+  └── agent_engine.stream_query()
 Vertex AI Agent Engine
   ├── Google Search         (car specs lookup)
   ├── Google Maps REST API  (directions, place search, geocode)
@@ -84,6 +85,7 @@ docker push us-central1-docker.pkg.dev/<PROJECT_ID>/ev-trip-planner/green-odysse
 gcloud run deploy <SERVICE_NAME> \
   --image us-central1-docker.pkg.dev/<PROJECT_ID>/ev-trip-planner/green-odyssey:latest \
   --region us-central1
+  --project <PROJECT_ID>
 ```
 
 ### Required IAM Roles for the Cloud Run Service Account
@@ -94,11 +96,13 @@ The Cloud Run service account needs these roles (App Design Center does not gran
 |------|---------|
 | `roles/artifactregistry.reader` | Pull the container image from Artifact Registry |
 | `roles/aiplatform.user` | Call the Vertex AI Agent Engine |
+| `roles/modelarmor.user` | Call Model Armor for prompt sanitization |
 
 ```bash
 SA="<SERVICE_ACCOUNT>@<PROJECT_ID>.iam.gserviceaccount.com"
 gcloud projects add-iam-policy-binding <PROJECT_ID> --member="serviceAccount:$SA" --role="roles/artifactregistry.reader"
 gcloud projects add-iam-policy-binding <PROJECT_ID> --member="serviceAccount:$SA" --role="roles/aiplatform.user"
+gcloud projects add-iam-policy-binding <PROJECT_ID> --member="serviceAccount:$SA" --role="roles/modelarmor.user"
 ```
 
 ### VPC Egress Configuration
