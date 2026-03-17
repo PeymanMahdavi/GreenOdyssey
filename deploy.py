@@ -2,7 +2,6 @@
 
 from google.api_core import exceptions
 import vertexai
-from google.cloud import modelarmor_v1
 from vertexai import agent_engines
 
 PROJECT_ID = "qwiklabs-asl-02-c74cc833bee1"
@@ -13,6 +12,7 @@ GOOGLE_MAPS_API_KEY = "AIzaSyCusFvFHfognHFDGDQueMDye04d1kQk4BA"
 
 
 def create_armor_template():
+    from google.cloud import modelarmor_v1
     client = modelarmor_v1.ModelArmorClient()
 
     template = {
