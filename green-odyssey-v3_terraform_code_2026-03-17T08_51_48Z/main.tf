@@ -26,6 +26,13 @@ module "cloud-run-1" {
   }
   depends_on = [module.project-services-qwiklabs-asl-02-c74cc833bee1, module.project-services-billing-project]
 }
+resource "google_cloud_run_v2_service_iam_member" "public_access" {
+  project  = module.cloud-run-1.project_id
+  location = module.cloud-run-1.service_location
+  name     = module.cloud-run-1.service_name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
 module "apphub" {
   source         = "github.com/GoogleCloudPlatform/terraform-google-apphub?ref=v0.4.0"
   project_id     = "qwiklabs-asl-02-c74cc833bee1"
