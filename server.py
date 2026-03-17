@@ -4,6 +4,8 @@ import logging
 import re
 
 import vertexai
+from google.cloud import modelarmor_v1
+from google.api_core.client_options import ClientOptions
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -19,8 +21,17 @@ AGENT_ENGINE_RESOURCE_NAME = os.environ.get(
     "projects/1050509607684/locations/us-central1/reasoningEngines/1769878369672888320",
 )
 
+MODEL_ARMOR_TEMPLATE = f"projects/{PROJECT_ID}/locations/{LOCATION}/templates/green-odyssey-safety"
+
 client = vertexai.Client(project=PROJECT_ID, location=LOCATION)
 agent_engine = None
+
+ma_client = modelarmor_v1.ModelArmorClient(
+    transport="rest",
+    client_options=ClientOptions(
+        api_endpoint=f"modelarmor.{LOCATION}.rep.googleapis.com"
+    ),
+)
 
 
 def get_agent_engine():
@@ -56,7 +67,25 @@ async def plan_trip(request: PlanTripRequest):
         f"Average speed: {request.speed_kmh} km/h. "
         f"Max driving before a break: {request.max_drive_hours} hours. "
         f"Travel style: {request.travel_style}. "
+        f"Trip mood: {request.trip_mood}. "
     )
+
+    # --- Model Armor Safety Check ---
+    try:
+        ma_request = modelarmor_v1.SanitizeUserPromptRequest(
+            name=MODEL_ARMOR_TEMPLATE,
+            user_prompt_data={"text": prompt}
+        )
+        ma_response = ma_client.sanitize_user_prompt(request=ma_request)
+        
+        if ma_response.sanitization_result.filter_match_state == modelarmor_v1.FilterMatchState.MATCH_FOUND:
+            logger.warning(f"Model Armor blocked request. Result: {ma_response.sanitization_result}")
+            raise HTTPException(status_code=400, detail="Safety violation detected in your request.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Model Armor validation failed: {e}")
+        raise HTTPException(status_code=500, detail="Security validation error")
 
     try:
         engine = get_agent_engine()
