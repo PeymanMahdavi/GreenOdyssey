@@ -137,6 +137,66 @@ gcloud run services proxy <SERVICE_NAME> --region=us-central1 --port=8080
 | Cloud Run | `GOOGLE_CLOUD_LOCATION` | GCP region |
 | Cloud Run | `AGENT_ENGINE_RESOURCE_NAME` | Agent Engine resource path |
 
+## Model Armor (Content Safety)
+
+Model Armor screens all Gemini API calls for prompt injection, jailbreak attempts, malicious URIs, and harmful content. It is integrated at the Vertex AI level via **floor settings**, meaning all `generateContent` calls in the project are automatically protected.
+
+### What's configured
+
+| Filter | Enforcement |
+|--------|-------------|
+| Prompt injection / jailbreak | Enabled, LOW_AND_ABOVE confidence |
+| Malicious URI detection | Enabled |
+| Hate speech | MEDIUM_AND_ABOVE |
+| Dangerous content | MEDIUM_AND_ABOVE |
+| Sexually explicit | MEDIUM_AND_ABOVE |
+| Harassment | MEDIUM_AND_ABOVE |
+
+Mode: `INSPECT_ONLY` with Cloud Logging enabled (logs violations without blocking). Change to `INSPECT_AND_BLOCK` for production use.
+
+### Setup commands
+
+```bash
+# 1. Enable the API
+gcloud services enable modelarmor.googleapis.com
+
+# 2. Grant Model Armor user to Vertex AI service account
+gcloud projects add-iam-policy-binding <PROJECT_ID> \
+  --member="serviceAccount:service-<PROJECT_NUMBER>@gcp-sa-aiplatform.iam.gserviceaccount.com" \
+  --role="roles/modelarmor.user"
+
+# 3. Create the template (also done by deploy.py)
+python -c "from deploy import create_armor_template; create_armor_template()"
+
+# 4. Enable floor settings with Vertex AI integration
+curl -X PATCH \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -d '{
+    "filterConfig": {
+      "raiSettings": {
+        "raiFilters": [
+          {"filterType": "HATE_SPEECH", "confidenceLevel": "MEDIUM_AND_ABOVE"},
+          {"filterType": "DANGEROUS", "confidenceLevel": "MEDIUM_AND_ABOVE"},
+          {"filterType": "SEXUALLY_EXPLICIT", "confidenceLevel": "MEDIUM_AND_ABOVE"},
+          {"filterType": "HARASSMENT", "confidenceLevel": "MEDIUM_AND_ABOVE"}
+        ]
+      },
+      "piAndJailbreakFilterSettings": {"filterEnforcement": "ENABLED", "confidenceLevel": "LOW_AND_ABOVE"},
+      "maliciousUriFilterSettings": {"filterEnforcement": "ENABLED"}
+    },
+    "integratedServices": ["AI_PLATFORM"],
+    "aiPlatformFloorSetting": {"inspectOnly": true, "enableCloudLogging": true},
+    "enableFloorSettingEnforcement": true
+  }' \
+  "https://modelarmor.googleapis.com/v1/projects/<PROJECT_ID>/locations/global/floorSetting"
+
+# 5. (Optional) Switch to blocking mode for production
+gcloud model-armor floorsettings update \
+  --full-uri=projects/<PROJECT_ID>/locations/global/floorSetting \
+  --vertex-ai-enforcement-type=INSPECT_AND_BLOCK
+```
+
 ## Key Implementation Notes
 
 - **Maps tool responses are condensed**: `get_directions`, `search_places`, and `geocode` strip polylines, HTML instructions, and bulk metadata from Google Maps API responses. The Vertex AI SDK has a size limit on function responses (~64KB), and raw Directions API responses for long routes can exceed 100KB.
@@ -149,4 +209,5 @@ gcloud run services proxy <SERVICE_NAME> --region=us-central1 --port=8080
 - **Agent**: Google ADK, Gemini 2.5 Flash, Pydantic output schema
 - **Backend**: FastAPI, Vertex AI SDK
 - **Frontend**: Vanilla HTML/CSS/JS, Leaflet maps, Lucide icons
+- **Safety**: Model Armor (prompt injection, RAI filters, malicious URI detection)
 - **Infrastructure**: Vertex AI Agent Engine, Cloud Run, Artifact Registry
