@@ -190,6 +190,12 @@
                     </div>
                 </div>
 
+                <div class="form-group" style="margin-top: 16px;">
+                    <label class="form-label" for="custom_prompt">Additional Preferences (Optional)</label>
+                    <textarea id="custom_prompt" class="form-control" rows="3" placeholder="e.g., Avoid toll roads, prefer charging stations with restaurants..." 
+                        style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text-main); margin-top: 8px; font-family: inherit; resize: vertical;"></textarea>
+                </div>
+
                 <button type="submit" class="btn btn-primary"
                     style="width:100%;font-size:1.125rem;padding:16px;margin-top:16px;">
                     <i data-lucide="sparkles"></i> Generate AI Trip
@@ -361,6 +367,7 @@
             const model = modelEl.options[modelEl.selectedIndex].text;
             const style = document.querySelector('input[name="travel_style"]:checked').value;
             const mood = document.querySelector('input[name="trip_mood"]:checked').value;
+            const customPromptValue = document.getElementById('custom_prompt').value;
 
             const submitBtn = this.querySelector('button[type="submit"]');
             const originalHTML = submitBtn.innerHTML;
@@ -384,7 +391,8 @@
                         car_brand: brand,
                         car_model: model,
                         travel_style: style,
-                        trip_mood: mood
+                        trip_mood: mood,
+                        custom_prompt: customPromptValue
                     })
                 });
 

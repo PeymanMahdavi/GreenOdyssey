@@ -82,6 +82,7 @@ class PlanTripRequest(BaseModel):
     trip_mood: str = "relaxed"
     speed_kmh: float = 100.0
     max_drive_hours: float = 2.0
+    custom_prompt: str = ""
 
 
 @app.post("/api/plan-trip")
@@ -96,6 +97,9 @@ async def plan_trip(request: PlanTripRequest):
         f"Travel style: {request.travel_style}. "
         f"Trip mood: {request.trip_mood}. "
     )
+
+    if request.custom_prompt:
+        prompt += f" Additional preferences: {request.custom_prompt}"
 
     # --- Model Armor Safety Check ---
     try:

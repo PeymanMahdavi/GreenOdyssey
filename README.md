@@ -1,5 +1,7 @@
 # Green Odyssey — AI-Powered EV Road Trip Planner
 
+**Deployed Address:** [https://green-odyssey-v3-1050509607684.us-central1.run.app/](https://green-odyssey-v3-1050509607684.us-central1.run.app/)
+
 Green Odyssey is an EV road trip planner that uses a Google ADK agent to create battery-aware itineraries with real charging stations, merged charge/rest stops, and precise trip timing.
 
 ## Architecture
