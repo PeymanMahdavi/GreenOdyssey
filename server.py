@@ -2,9 +2,10 @@ import os
 import json
 import logging
 import re
+import requests
 
 import vertexai
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
@@ -105,6 +106,36 @@ async def plan_trip(request: PlanTripRequest):
     except Exception as e:
         logger.exception("Agent Engine call failed")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/geocode")
+async def geocode_proxy(q: str, limit: int = Query(5, ge=1, le=10)):
+    """Proxy for Nominatim geocoding to avoid CORS issues."""
+    if not q:
+        raise HTTPException(status_code=400, detail="Query parameter 'q' is required.")
+    try:
+        # Per Nominatim's usage policy, a custom User-Agent is required.
+        # https://operations.osmfoundation.org/policies/nominatim/
+        headers = {
+            'User-Agent': 'GreenOdyssey/1.0 (https://github.com/GoogleCloudPlatform/gemini-agents-for-firestore)'
+        }
+        params = {
+            "format": "json",
+            "q": q,
+            "limit": limit,
+            "featuretype": "city"
+        }
+        resp = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params=params,
+            headers=headers,
+            timeout=10
+        )
+        resp.raise_for_status()  # Raise an exception for bad status codes
+        return resp.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Geocoding request failed: {e}")
+        raise HTTPException(status_code=502, detail="Failed to fetch data from geocoding service.")
 
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
